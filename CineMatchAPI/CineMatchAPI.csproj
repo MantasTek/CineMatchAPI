@@ -21,8 +21,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="9.0.6" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.6" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
   </ItemGroup>
 
   <ItemGroup>
