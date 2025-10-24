@@ -1,6 +1,7 @@
 ﻿using CineMatchAPI.Application.Services;
 using CineMatchAPI.Domain.Entities;
 using CineMatchAPI.Domain.Interfaces;
+using CineMatchAPI.Infrastructure.Services;
 using FluentAssertions;
 using Moq;
 using Xunit;
@@ -10,12 +11,14 @@ namespace CineMatch.Tests.Services;
 public class MovieServiceTests
 {
     private readonly Mock<IMovieRepository> _movieRepositoryMock;
+    private readonly Mock<ITMDbService> _tmdbServiceMock;
     private readonly MovieService _movieService;
 
     public MovieServiceTests()
     {
         _movieRepositoryMock = new Mock<IMovieRepository>();
-        _movieService = new MovieService(_movieRepositoryMock.Object);
+        _tmdbServiceMock = new Mock<ITMDbService>();
+        _movieService = new MovieService(_movieRepositoryMock.Object, _tmdbServiceMock.Object);
     }
 
     [Fact]
@@ -121,10 +124,36 @@ public class MovieServiceTests
     }
 
     [Fact]
+    public async Task GetMoviesByPreferences_WithNoMoviesInCache_FetchesFromTMDb()
+    {
+        // Arrange
+        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Action", 1, 20))
+            .ReturnsAsync(new List<Movie>()); // Empty cache first call
+        
+        var fetchedMovies = new List<Movie>
+        {
+            new Movie { Id = "1", Title = "Fetched", Runtime = 100, Genre = "Action", Rating = 8, Year = 2023, ImageUrl = "url", Description = "desc" }
+        };
+        
+        _tmdbServiceMock.Setup(x => x.FetchAndCacheMoviesByGenreAsync("Action"))
+            .ReturnsAsync(fetchedMovies);
+        
+        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Action", 1, 20))
+            .ReturnsAsync(fetchedMovies); // Return cached after fetch
+
+        // Act
+        var result = await _movieService.GetMoviesByPreferencesAsync("Action", "medium", 1, 20);
+
+        // Assert
+        _tmdbServiceMock.Verify(x => x.FetchAndCacheMoviesByGenreAsync("Action"), Times.Once);
+    }
+
+    [Fact]
     public async Task GetMoviesByPreferences_WithNoMovies_ReturnsEmpty()
     {
         // Arrange
         _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Sci-Fi", 1, 20)).ReturnsAsync(new List<Movie>());
+        _tmdbServiceMock.Setup(x => x.FetchAndCacheMoviesByGenreAsync("Sci-Fi")).ReturnsAsync(new List<Movie>());
 
         // Act
         var result = await _movieService.GetMoviesByPreferencesAsync("Sci-Fi", "short", 1, 20);
@@ -138,12 +167,13 @@ public class MovieServiceTests
     {
         // Arrange
         _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Thriller", 2, 10)).ReturnsAsync(new List<Movie>());
+        _tmdbServiceMock.Setup(x => x.FetchAndCacheMoviesByGenreAsync(It.IsAny<string>())).ReturnsAsync(new List<Movie>());
 
         // Act
         await _movieService.GetMoviesByPreferencesAsync("Thriller", "medium", 2, 10);
 
         // Assert
-        _movieRepositoryMock.Verify(x => x.GetByGenreAsync("Thriller", 2, 10), Times.Once);
+        _movieRepositoryMock.Verify(x => x.GetByGenreAsync("Thriller", 2, 10), Times.AtLeastOnce);
     }
 
     [Theory]
