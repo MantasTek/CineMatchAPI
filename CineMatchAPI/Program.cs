@@ -1,84 +1,103 @@
+using CineMatchAPI.Application.Services;
 using CineMatchAPI.Domain.Interfaces;
+using CineMatchAPI.Hubs;
 using CineMatchAPI.Infrastructure.Data;
 using CineMatchAPI.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models; // Add this using directive at the top of the file
-using Swashbuckle.AspNetCore.SwaggerGen; // Add this using directive at the top of the file
-using Swashbuckle.AspNetCore.SwaggerUI; // Add this using directive at the top of the file
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the dependency injection container
-// This section registers all the services our application needs
-
-// Register our database context with SQLite
-// The connection string is read from appsettings.json
-// This follows the configuration pattern where environment-specific settings
-// live in configuration files rather than code
+// Database
 builder.Services.AddDbContext<CineMatchDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Register all our repository implementations
-// When a class asks for IUserRepository, it will receive UserRepository
-// The Scoped lifetime means one instance per HTTP request
-// This is important for database contexts which should not be shared across requests
+// Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 builder.Services.AddScoped<ISwipeRepository, SwipeRepository>();
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 
-// Add controller support
-// This enables our API controllers to handle HTTP requests
-builder.Services.AddControllers();
+// Services
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ISwipeService, SwipeService>();
+builder.Services.AddScoped<IMovieService, MovieService>();
+builder.Services.AddScoped<IMatchService, MatchService>();
+builder.Services.AddScoped<IMessageService, MessageService>();
 
-// Add API documentation with Swagger/OpenAPI
-// Swagger generates interactive API documentation that we can use for testing
-// This is incredibly useful during development
+// JWT Authentication
+var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ClockSkew = TimeSpan.Zero
+        };
+
+        // Configure JWT for SignalR
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chathub"))
+                {
+                    context.Token = accessToken;
+                }
+                
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configure CORS (Cross-Origin Resource Sharing)
-// This allows our React frontend (running on a different port) to call our API
-// In production, you would restrict this to specific origins
+// SignalR
+builder.Services.AddSignalR();
+
+// CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:5173") // Vite's default port
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials(); // Required for authentication cookies/headers
-        });
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
 });
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
-// This section defines how incoming requests are processed
-
-// Enable Swagger only in development
-// We do not want to expose our API documentation in production
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// Use HTTPS redirection to ensure secure communication
 app.UseHttpsRedirection();
-
-// Enable CORS with the policy we defined earlier
 app.UseCors("AllowReactApp");
-
-// Enable authentication and authorization middleware
-// These will be used once we add JWT authentication
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Map controller routes
-// This tells ASP.NET Core to route requests to our controller methods
 app.MapControllers();
+app.MapHub<ChatHub>("/chathub");
 
 app.Run();
