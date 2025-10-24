@@ -3,6 +3,7 @@ using CineMatchAPI.Domain.Interfaces;
 using CineMatchAPI.Hubs;
 using CineMatchAPI.Infrastructure.Data;
 using CineMatchAPI.Infrastructure.Repositories;
+using CineMatchAPI.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -21,6 +22,9 @@ builder.Services.AddScoped<ISwipeRepository, SwipeRepository>();
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 
+// HttpClient for TMDb
+builder.Services.AddHttpClient<ITMDbService, TMDbService>();
+
 // Services
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -30,6 +34,7 @@ builder.Services.AddScoped<ISwipeService, SwipeService>();
 builder.Services.AddScoped<IMovieService, MovieService>();
 builder.Services.AddScoped<IMatchService, MatchService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<ITMDbService, TMDbService>();
 
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
@@ -48,7 +53,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.Zero
         };
 
-        // Configure JWT for SignalR
+        // JWT for SignalR
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -69,8 +74,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-// SignalR
 builder.Services.AddSignalR();
 
 // CORS

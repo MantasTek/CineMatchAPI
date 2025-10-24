@@ -1,20 +1,24 @@
 ﻿using CineMatchAPI.Application.DTOs;
 using CineMatchAPI.Domain.Interfaces;
+using CineMatchAPI.Infrastructure.Services;
 
 namespace CineMatchAPI.Application.Services;
 
 public interface IMovieService
 {
     Task<IEnumerable<MovieDto>> GetMoviesByPreferencesAsync(string genre, string movieLength, int page = 1, int pageSize = 20);
+    Task SeedMoviesAsync();
 }
 
 public class MovieService : IMovieService
 {
     private readonly IMovieRepository _movieRepository;
+    private readonly ITMDbService _tmdbService;
 
-    public MovieService(IMovieRepository movieRepository)
+    public MovieService(IMovieRepository movieRepository, ITMDbService tmdbService)
     {
         _movieRepository = movieRepository;
+        _tmdbService = tmdbService;
     }
 
     public async Task<IEnumerable<MovieDto>> GetMoviesByPreferencesAsync(
@@ -23,9 +27,17 @@ public class MovieService : IMovieService
         int page = 1, 
         int pageSize = 20)
     {
+        // Try to get from cache first
         var movies = await _movieRepository.GetByGenreAsync(genre, page, pageSize);
         
-        // Filter by runtime based on length preference
+        // If no movies cached, fetch from TMDb
+        if (!movies.Any())
+        {
+            await _tmdbService.FetchAndCacheMoviesByGenreAsync(genre);
+            movies = await _movieRepository.GetByGenreAsync(genre, page, pageSize);
+        }
+        
+        // Filter by runtime
         var filtered = FilterByLength(movies, movieLength);
         
         return filtered.Select(m => new MovieDto(
@@ -38,6 +50,11 @@ public class MovieService : IMovieService
             m.Description,
             m.Runtime
         ));
+    }
+
+    public async Task SeedMoviesAsync()
+    {
+        await _tmdbService.SeedDatabaseAsync();
     }
 
     private IEnumerable<Domain.Entities.Movie> FilterByLength(
