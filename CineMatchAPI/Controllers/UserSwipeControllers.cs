@@ -32,8 +32,8 @@ public class UserController : ControllerBase
     public async Task<IActionResult> UpdatePreferences([FromBody] UpdatePreferencesDto dto)
     {
         var success = await _userService.UpdatePreferencesAsync(GetUserId(), dto);
-        if (!success) return BadRequest();
-        return Ok();
+        if (!success) return BadRequest(new { message = "Failed to update preferences" });
+        return Ok(new { message = "Preferences updated successfully" });
     }
 
     [HttpPost("reset")]

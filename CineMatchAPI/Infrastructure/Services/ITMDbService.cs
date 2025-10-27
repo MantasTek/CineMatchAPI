@@ -18,7 +18,6 @@ public class TMDbService : ITMDbService
     private readonly string _apiKey;
     private readonly string _baseUrl = "https://api.themoviedb.org/3";
 
-    // TMDb genre IDs
     private readonly Dictionary<string, int> _genreMap = new()
     {
         { "Action", 28 },
@@ -56,13 +55,20 @@ public class TMDbService : ITMDbService
         }
 
         var content = await response.Content.ReadAsStringAsync();
-        var result = JsonSerializer.Deserialize<TMDbResponse>(content);
+        Console.WriteLine($"Raw API response (first 500 chars): {content.Substring(0, Math.Min(500, content.Length))}");
+        
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+        var result = JsonSerializer.Deserialize<TMDbResponse>(content, options);
+
+        Console.WriteLine($"Fetched {result?.Results?.Count ?? 0} movies for genre {genre}");
 
         var movies = new List<Movie>();
         
         foreach (var tmdbMovie in result?.Results ?? new List<TMDbMovie>())
         {
-            // Check if already cached
             if (await _movieRepository.ExistsAsync(tmdbMovie.Id.ToString()))
             {
                 continue;
@@ -93,7 +99,7 @@ public class TMDbService : ITMDbService
         foreach (var genre in _genreMap.Keys)
         {
             await FetchAndCacheMoviesByGenreAsync(genre);
-            await Task.Delay(250); // Rate limiting
+            await Task.Delay(250);
         }
     }
 
@@ -113,23 +119,27 @@ public class TMDbService : ITMDbService
         }
         catch
         {
-            // Fallback to default
         }
 
-        return 120; // Default runtime
+        return 120;
     }
 }
 
-// DTOs for TMDb API responses
 public class TMDbResponse
 {
+    [JsonPropertyName("results")]
     public List<TMDbMovie> Results { get; set; } = new();
 }
 
 public class TMDbMovie
 {
+    [JsonPropertyName("id")]
     public int Id { get; set; }
+    
+    [JsonPropertyName("title")]
     public string Title { get; set; } = string.Empty;
+    
+    [JsonPropertyName("overview")]
     public string Overview { get; set; } = string.Empty;
     
     [JsonPropertyName("poster_path")]
@@ -144,5 +154,6 @@ public class TMDbMovie
 
 public class TMDbMovieDetails
 {
+    [JsonPropertyName("runtime")]
     public int Runtime { get; set; }
 }

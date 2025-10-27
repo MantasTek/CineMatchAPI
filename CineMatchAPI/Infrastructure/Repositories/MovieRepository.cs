@@ -21,19 +21,22 @@ public class MovieRepository : IMovieRepository
 
     public async Task<IEnumerable<Movie>> GetByGenreAsync(string genre, int page, int pageSize)
     {
-        // Calculate how many records to skip based on page number
-        // Page 1 skips 0, page 2 skips pageSize, page 3 skips pageSize * 2, etc.
         var skip = (page - 1) * pageSize;
 
-        // Build a query that filters by genre and orders randomly
-        // OrderBy(m => Guid.NewGuid()) gives us a random shuffle
-        // This ensures users see different movies each time
-        return await _context.Movies
+        // Load movies into memory first, then shuffle
+        var allMovies = await _context.Movies
             .Where(m => m.Genre == genre)
-            .OrderBy(m => Guid.NewGuid())
+            .ToListAsync();
+
+        // Shuffle in-memory using Random
+        var random = new Random();
+        var shuffled = allMovies.OrderBy(x => random.Next()).ToList();
+
+        // Apply pagination
+        return shuffled
             .Skip(skip)
             .Take(pageSize)
-            .ToListAsync();
+            .ToList();
     }
 
     public async Task<Movie> CreateAsync(Movie movie)

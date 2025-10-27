@@ -1,60 +1,38 @@
-﻿using CineMatchAPI.Domain.Entities;
-using CineMatchAPI.Domain.Interfaces;
-using Microsoft.AspNetCore.Http.HttpResults;
+﻿using CineMatchAPI.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CineMatchAPI.Controllers;
 
-/// <summary>
-/// Simple test controller to verify our database and dependency injection are working.
-/// This will be removed once we have proper controllers, but it's useful for initial testing.
-/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class TestController : ControllerBase
 {
-    private readonly IUserRepository _userRepository;
+    private readonly CineMatchDbContext _context;
 
-    // Dependency injection automatically provides the repository
-    public TestController(IUserRepository userRepository)
+    public TestController(CineMatchDbContext context)
     {
-        _userRepository = userRepository;
+        _context = context;
     }
 
-    /// <summary>
-    /// A simple GET endpoint that returns a test message.
-    /// GET: api/test
-    /// </summary>
     [HttpGet]
     public IActionResult Get()
     {
         return Ok(new { message = "CineMatch API is running!", timestamp = DateTime.UtcNow });
     }
 
-    /// <summary>
-    /// Test database connectivity by counting users.
-    /// GET: api/test/db
-    /// </summary>
-    [HttpGet("db")]
-    public async Task<IActionResult> TestDatabase()
+    [HttpGet("movies")]
+    public async Task<IActionResult> TestMovies()
     {
-        try
-        {
-            var users = await _userRepository.GetAllAsync();
-            return Ok(new 
-            { 
-                message = "Database connection successful",
-                userCount = users.Count(),
-                timestamp = DateTime.UtcNow 
-            });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new 
-            { 
-                message = "Database connection failed", 
-                error = ex.Message 
-            });
-        }
+        var allMovies = await _context.Movies.ToListAsync();
+        var actionMovies = allMovies.Where(m => m.Genre == "Action").ToList();
+        var mediumAction = actionMovies.Where(m => m.Runtime >= 90 && m.Runtime <= 130).ToList();
+        
+        return Ok(new {
+            totalMovies = allMovies.Count,
+            totalAction = actionMovies.Count,
+            mediumAction = mediumAction.Count,
+            sampleMovies = mediumAction.Take(3).Select(m => new { m.Title, m.Runtime, m.Genre })
+        });
     }
 }
