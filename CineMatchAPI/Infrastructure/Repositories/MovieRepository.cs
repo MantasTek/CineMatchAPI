@@ -23,16 +23,44 @@ public class MovieRepository : IMovieRepository
     {
         var skip = (page - 1) * pageSize;
 
-        // Load movies into memory first, then shuffle
+        // Get ALL movies for this genre
         var allMovies = await _context.Movies
             .Where(m => m.Genre == genre)
             .ToListAsync();
 
-        // Shuffle in-memory using Random
+        // Shuffle in-memory
         var random = new Random();
         var shuffled = allMovies.OrderBy(x => random.Next()).ToList();
 
-        // Apply pagination
+        return shuffled
+            .Skip(skip)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    public async Task<IEnumerable<Movie>> GetByGenreExcludingSwipedAsync(
+        string genre, 
+        string userId, 
+        int page, 
+        int pageSize)
+    {
+        var skip = (page - 1) * pageSize;
+
+        // Get movies the user has already swiped
+        var swipedMovieIds = await _context.Swipes
+            .Where(s => s.UserId == userId)
+            .Select(s => s.MovieId)
+            .ToListAsync();
+
+        // Get unswipped movies
+        var allMovies = await _context.Movies
+            .Where(m => m.Genre == genre && !swipedMovieIds.Contains(m.Id))
+            .ToListAsync();
+
+        // Shuffle
+        var random = new Random();
+        var shuffled = allMovies.OrderBy(x => random.Next()).ToList();
+
         return shuffled
             .Skip(skip)
             .Take(pageSize)

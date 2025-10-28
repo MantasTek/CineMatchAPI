@@ -7,7 +7,7 @@ namespace CineMatchAPI.Infrastructure.Services;
 
 public interface ITMDbService
 {
-    Task<List<Movie>> FetchAndCacheMoviesByGenreAsync(string genre);
+    Task<List<Movie>> FetchAndCacheMoviesByGenreAsync(string genre, int pagesToFetch = 5);
     Task SeedDatabaseAsync();
 }
 
@@ -39,56 +39,62 @@ public class TMDbService : ITMDbService
         _apiKey = configuration["TMDb:ApiKey"] ?? throw new InvalidOperationException("TMDb API key not configured");
     }
 
-    public async Task<List<Movie>> FetchAndCacheMoviesByGenreAsync(string genre)
+    public async Task<List<Movie>> FetchAndCacheMoviesByGenreAsync(string genre, int pagesToFetch = 5)
     {
         if (!_genreMap.TryGetValue(genre, out int genreId))
         {
             return new List<Movie>();
         }
 
-        var url = $"{_baseUrl}/discover/movie?api_key={_apiKey}&with_genres={genreId}&sort_by=popularity.desc&page=1";
-        var response = await _httpClient.GetAsync(url);
-        
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new HttpRequestException($"TMDb API request failed: {response.StatusCode}");
-        }
-
-        var content = await response.Content.ReadAsStringAsync();
-        Console.WriteLine($"Raw API response (first 500 chars): {content.Substring(0, Math.Min(500, content.Length))}");
-        
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
-        var result = JsonSerializer.Deserialize<TMDbResponse>(content, options);
-
-        Console.WriteLine($"Fetched {result?.Results?.Count ?? 0} movies for genre {genre}");
-
         var movies = new List<Movie>();
-        
-        foreach (var tmdbMovie in result?.Results ?? new List<TMDbMovie>())
+
+        // Fetch multiple pages to get more variety
+        for (int page = 1; page <= pagesToFetch; page++)
         {
-            if (await _movieRepository.ExistsAsync(tmdbMovie.Id.ToString()))
+            var url = $"{_baseUrl}/discover/movie?api_key={_apiKey}&with_genres={genreId}&sort_by=popularity.desc&page={page}";
+            var response = await _httpClient.GetAsync(url);
+            
+            if (!response.IsSuccessStatusCode)
             {
                 continue;
             }
 
-            var movie = new Movie
+            var content = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions
             {
-                Id = tmdbMovie.Id.ToString(),
-                Title = tmdbMovie.Title,
-                Genre = genre,
-                Rating = tmdbMovie.VoteAverage,
-                Year = tmdbMovie.ReleaseDate?.Year ?? 2000,
-                ImageUrl = $"https://image.tmdb.org/t/p/w500{tmdbMovie.PosterPath}",
-                Description = tmdbMovie.Overview,
-                Runtime = await FetchMovieRuntimeAsync(tmdbMovie.Id),
-                CachedAt = DateTime.UtcNow
+                PropertyNameCaseInsensitive = true
             };
+            var result = JsonSerializer.Deserialize<TMDbResponse>(content, options);
 
-            await _movieRepository.CreateAsync(movie);
-            movies.Add(movie);
+            foreach (var tmdbMovie in result?.Results ?? new List<TMDbMovie>())
+            {
+                if (await _movieRepository.ExistsAsync(tmdbMovie.Id.ToString()))
+                {
+                    continue;
+                }
+
+                var movie = new Movie
+                {
+                    Id = tmdbMovie.Id.ToString(),
+                    Title = tmdbMovie.Title,
+                    Genre = genre,
+                    Rating = tmdbMovie.VoteAverage,
+                    Year = tmdbMovie.ReleaseDate?.Year ?? 2000,
+                    ImageUrl = $"https://image.tmdb.org/t/p/w500{tmdbMovie.PosterPath}",
+                    Description = tmdbMovie.Overview,
+                    Runtime = await FetchMovieRuntimeAsync(tmdbMovie.Id),
+                    CachedAt = DateTime.UtcNow
+                };
+
+                await _movieRepository.CreateAsync(movie);
+                movies.Add(movie);
+            }
+
+            // Rate limiting between pages
+            if (page < pagesToFetch)
+            {
+                await Task.Delay(250);
+            }
         }
 
         return movies;
@@ -98,7 +104,7 @@ public class TMDbService : ITMDbService
     {
         foreach (var genre in _genreMap.Keys)
         {
-            await FetchAndCacheMoviesByGenreAsync(genre);
+            await FetchAndCacheMoviesByGenreAsync(genre, pagesToFetch: 5);
             await Task.Delay(250);
         }
     }
@@ -113,7 +119,11 @@ public class TMDbService : ITMDbService
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
-                var movie = JsonSerializer.Deserialize<TMDbMovieDetails>(content);
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var movie = JsonSerializer.Deserialize<TMDbMovieDetails>(content, options);
                 return movie?.Runtime ?? 120;
             }
         }

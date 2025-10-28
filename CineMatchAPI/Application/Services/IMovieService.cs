@@ -6,7 +6,7 @@ namespace CineMatchAPI.Application.Services;
 
 public interface IMovieService
 {
-    Task<IEnumerable<MovieDto>> GetMoviesByPreferencesAsync(string genre, string movieLength, int page = 1, int pageSize = 20);
+    Task<IEnumerable<MovieDto>> GetMoviesByPreferencesAsync(string userId, string genre, string movieLength, int page = 1, int pageSize = 20);
     Task SeedMoviesAsync();
 }
 
@@ -22,19 +22,20 @@ public class MovieService : IMovieService
     }
 
     public async Task<IEnumerable<MovieDto>> GetMoviesByPreferencesAsync(
+        string userId,
         string genre, 
         string movieLength, 
         int page = 1, 
         int pageSize = 20)
     {
-        // Try to get from cache first
-        var movies = await _movieRepository.GetByGenreAsync(genre, page, pageSize);
+        // Get movies excluding already swiped ones
+        var movies = await _movieRepository.GetByGenreExcludingSwipedAsync(genre, userId, page, pageSize);
         
-        // If no movies cached, fetch from TMDb
-        if (!movies.Any())
+        // If we have fewer than 5 movies left, fetch more from TMDb
+        if (movies.Count() < 5)
         {
-            await _tmdbService.FetchAndCacheMoviesByGenreAsync(genre);
-            movies = await _movieRepository.GetByGenreAsync(genre, page, pageSize);
+            await _tmdbService.FetchAndCacheMoviesByGenreAsync(genre, pagesToFetch: 3);
+            movies = await _movieRepository.GetByGenreExcludingSwipedAsync(genre, userId, page, pageSize);
         }
         
         // Filter by runtime

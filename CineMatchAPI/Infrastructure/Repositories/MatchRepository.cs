@@ -65,4 +65,14 @@ public class MatchRepository : IMatchRepository
         _context.Matches.RemoveRange(matches);
         await _context.SaveChangesAsync();
     }
+
+    public Task<IEnumerable<object>> GetMatchesByUserIdAsync(string userId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task DeleteAsync(object id)
+    {
+        throw new NotImplementedException();
+    }
 }
