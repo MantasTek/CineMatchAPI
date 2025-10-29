@@ -13,4 +13,5 @@ public interface ISwipeRepository
     Task<Swipe> UpdateAsync(Swipe swipe);
     Task DeleteAsync(string id);
     Task DeleteAllByUserIdAsync(string userId);
+    Task<IEnumerable<object>> GetUserLikesAsync(string userId);
 }

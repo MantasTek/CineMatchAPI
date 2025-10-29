@@ -81,4 +81,9 @@ public class SwipeRepository : ISwipeRepository
         _context.Swipes.RemoveRange(swipes);
         await _context.SaveChangesAsync();
     }
+
+    public Task<IEnumerable<object>> GetUserLikesAsync(string userId)
+    {
+        throw new NotImplementedException();
+    }
 }
