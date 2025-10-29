@@ -31,7 +31,7 @@ public class MovieServiceTests
             new Movie { Id = "2", Title = "Medium Movie", Genre = "Action", Runtime = 110, Rating = 8.0, Year = 2021, ImageUrl = "url", Description = "desc" },
             new Movie { Id = "3", Title = "Long Movie", Genre = "Action", Runtime = 150, Rating = 8.5, Year = 2022, ImageUrl = "url", Description = "desc" }
         };
-        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Action", 1, 20)).ReturnsAsync(movies);
+        _movieRepositoryMock.Setup(x => x.GetByGenreAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(movies);
 
         // Act
         var result = await _movieService.GetMoviesByPreferencesAsync("Action", "short", 1, 20);
@@ -53,7 +53,7 @@ public class MovieServiceTests
             new Movie { Id = "3", Title = "Medium2", Runtime = 120, Genre = "Comedy", Rating = 7, Year = 2020, ImageUrl = "url", Description = "desc" },
             new Movie { Id = "4", Title = "Long", Runtime = 140, Genre = "Comedy", Rating = 7, Year = 2020, ImageUrl = "url", Description = "desc" }
         };
-        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Comedy", 1, 20)).ReturnsAsync(movies);
+        _movieRepositoryMock.Setup(x => x.GetByGenreAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(movies);
 
         // Act
         var result = await _movieService.GetMoviesByPreferencesAsync("Comedy", "medium", 1, 20);
@@ -73,7 +73,7 @@ public class MovieServiceTests
             new Movie { Id = "2", Title = "Long1", Runtime = 140, Genre = "Drama", Rating = 7, Year = 2020, ImageUrl = "url", Description = "desc" },
             new Movie { Id = "3", Title = "Long2", Runtime = 180, Genre = "Drama", Rating = 7, Year = 2020, ImageUrl = "url", Description = "desc" }
         };
-        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Drama", 1, 20)).ReturnsAsync(movies);
+        _movieRepositoryMock.Setup(x => x.GetByGenreAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(movies);
 
         // Act
         var result = await _movieService.GetMoviesByPreferencesAsync("Drama", "long", 1, 20);
@@ -92,7 +92,7 @@ public class MovieServiceTests
             new Movie { Id = "1", Title = "M1", Runtime = 80, Genre = "Horror", Rating = 7, Year = 2020, ImageUrl = "url", Description = "desc" },
             new Movie { Id = "2", Title = "M2", Runtime = 120, Genre = "Horror", Rating = 7, Year = 2020, ImageUrl = "url", Description = "desc" }
         };
-        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Horror", 1, 20)).ReturnsAsync(movies);
+        _movieRepositoryMock.Setup(x => x.GetByGenreAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(movies);
 
         // Act
         var result = await _movieService.GetMoviesByPreferencesAsync("Horror", "invalid", 1, 20);
@@ -109,7 +109,7 @@ public class MovieServiceTests
         {
             new Movie { Id = "1", Title = "Test", Runtime = 100, Genre = "Action", Rating = 8.5, Year = 2023, ImageUrl = "test.jpg", Description = "Test desc" }
         };
-        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Action", 1, 20)).ReturnsAsync(movies);
+        _movieRepositoryMock.Setup(x => x.GetByGenreAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(movies);
 
         // Act
         var result = (await _movieService.GetMoviesByPreferencesAsync("Action", "medium", 1, 20)).ToList();
@@ -127,19 +127,17 @@ public class MovieServiceTests
     public async Task GetMoviesByPreferences_WithNoMoviesInCache_FetchesFromTMDb()
     {
         // Arrange
-        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Action", 1, 20))
-            .ReturnsAsync(new List<Movie>()); // Empty cache first call
-        
         var fetchedMovies = new List<Movie>
         {
             new Movie { Id = "1", Title = "Fetched", Runtime = 100, Genre = "Action", Rating = 8, Year = 2023, ImageUrl = "url", Description = "desc" }
         };
         
-        _tmdbServiceMock.Setup(x => x.FetchAndCacheMoviesByGenreAsync("Action"))
-            .ReturnsAsync(fetchedMovies);
-        
-        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Action", 1, 20))
+        _movieRepositoryMock.SetupSequence(x => x.GetByGenreAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(new List<Movie>()) // Empty cache first call
             .ReturnsAsync(fetchedMovies); // Return cached after fetch
+        
+        _tmdbServiceMock.Setup(x => x.FetchAndCacheMoviesByGenreAsync(It.IsAny<string>()))
+            .ReturnsAsync(fetchedMovies);
 
         // Act
         var result = await _movieService.GetMoviesByPreferencesAsync("Action", "medium", 1, 20);
@@ -152,8 +150,8 @@ public class MovieServiceTests
     public async Task GetMoviesByPreferences_WithNoMovies_ReturnsEmpty()
     {
         // Arrange
-        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Sci-Fi", 1, 20)).ReturnsAsync(new List<Movie>());
-        _tmdbServiceMock.Setup(x => x.FetchAndCacheMoviesByGenreAsync("Sci-Fi")).ReturnsAsync(new List<Movie>());
+        _movieRepositoryMock.Setup(x => x.GetByGenreAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(new List<Movie>());
+        _tmdbServiceMock.Setup(x => x.FetchAndCacheMoviesByGenreAsync(It.IsAny<string>())).ReturnsAsync(new List<Movie>());
 
         // Act
         var result = await _movieService.GetMoviesByPreferencesAsync("Sci-Fi", "short", 1, 20);
@@ -166,7 +164,7 @@ public class MovieServiceTests
     public async Task GetMoviesByPreferences_PassesCorrectParametersToRepository()
     {
         // Arrange
-        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Thriller", 2, 10)).ReturnsAsync(new List<Movie>());
+        _movieRepositoryMock.Setup(x => x.GetByGenreAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(new List<Movie>());
         _tmdbServiceMock.Setup(x => x.FetchAndCacheMoviesByGenreAsync(It.IsAny<string>())).ReturnsAsync(new List<Movie>());
 
         // Act
@@ -192,7 +190,7 @@ public class MovieServiceTests
         {
             new Movie { Id = "1", Title = "Test", Runtime = runtime, Genre = "Action", Rating = 7, Year = 2020, ImageUrl = "url", Description = "desc" }
         };
-        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Action", 1, 20)).ReturnsAsync(movies);
+        _movieRepositoryMock.Setup(x => x.GetByGenreAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(movies);
 
         // Act
         var result = await _movieService.GetMoviesByPreferencesAsync("Action", length, 1, 20);
@@ -212,7 +210,7 @@ public class MovieServiceTests
         {
             new Movie { Id = "1", Title = "Short", Runtime = 80, Genre = "Action", Rating = 7, Year = 2020, ImageUrl = "url", Description = "desc" }
         };
-        _movieRepositoryMock.Setup(x => x.GetByGenreAsync("Action", 1, 20)).ReturnsAsync(movies);
+        _movieRepositoryMock.Setup(x => x.GetByGenreAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(movies);
 
         // Act
         var result1 = await _movieService.GetMoviesByPreferencesAsync("Action", "SHORT", 1, 20);
