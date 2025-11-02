@@ -48,6 +48,7 @@ public class JwtTokenServiceTests
         token.Split('.').Should().HaveCount(3);
     }
 
+    // FIXED: This test now checks for the correct claim type that JwtTokenService actually uses
     [Fact]
     public void GenerateToken_ContainsUserId()
     {
@@ -55,12 +56,18 @@ public class JwtTokenServiceTests
 
         var handler = new JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(token);
-        var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+        
+        // The service uses JwtRegisteredClaimNames.Sub which appears as "sub" in the token
+        // We check for both "sub" and ClaimTypes.NameIdentifier for compatibility
+        var userIdClaim = jwtToken.Claims.FirstOrDefault(c => 
+            c.Type == JwtRegisteredClaimNames.Sub || 
+            c.Type == ClaimTypes.NameIdentifier);
 
         userIdClaim.Should().NotBeNull();
         userIdClaim!.Value.Should().Be("user123");
     }
 
+    // FIXED: This test now checks for the correct claim type for email
     [Fact]
     public void GenerateToken_ContainsEmail()
     {
@@ -68,7 +75,11 @@ public class JwtTokenServiceTests
 
         var handler = new JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(token);
-        var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email);
+        
+        // The service uses JwtRegisteredClaimNames.Email which appears as "email" in the token
+        var emailClaim = jwtToken.Claims.FirstOrDefault(c => 
+            c.Type == JwtRegisteredClaimNames.Email || 
+            c.Type == ClaimTypes.Email);
 
         emailClaim.Should().NotBeNull();
         emailClaim!.Value.Should().Be("test@example.com");
@@ -135,6 +146,7 @@ public class JwtTokenServiceTests
         token1.Should().NotBe(token2);
     }
 
+    // FIXED: This test now checks for the correct claim types
     [Theory]
     [InlineData("user1", "test1@example.com")]
     [InlineData("alice", "alice@test.com")]
@@ -146,8 +158,14 @@ public class JwtTokenServiceTests
         token.Should().NotBeNullOrEmpty();
         var handler = new JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(token);
-        jwtToken.Claims.Should().Contain(c => c.Type == ClaimTypes.NameIdentifier && c.Value == userId);
-        jwtToken.Claims.Should().Contain(c => c.Type == ClaimTypes.Email && c.Value == email);
+        
+        // Check for the correct claim types that the service actually uses
+        jwtToken.Claims.Should().Contain(c => 
+            (c.Type == JwtRegisteredClaimNames.Sub || c.Type == ClaimTypes.NameIdentifier) && 
+            c.Value == userId);
+        jwtToken.Claims.Should().Contain(c => 
+            (c.Type == JwtRegisteredClaimNames.Email || c.Type == ClaimTypes.Email) && 
+            c.Value == email);
     }
 
     [Fact]
