@@ -9,4 +9,6 @@ public interface IMatchRepository
     Task<Match?> GetMatchBetweenUsersForMovieAsync(string user1Id, string user2Id, string movieId);
     Task<Match> CreateAsync(Match match);
     Task DeleteAllByUserIdAsync(string userId); // For reset feature
+    Task<IEnumerable<object>> GetMatchesByUserIdAsync(string userId);
+    Task DeleteAsync(object id);
 }

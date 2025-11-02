@@ -37,7 +37,9 @@ builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddScoped<ITMDbService, TMDbService>();
 
 // JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
+var jwtKey = builder.Configuration["Jwt:Key"] 
+    ?? throw new InvalidOperationException("JWT Key not configured");
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -81,8 +83,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:8080",
-                           "http://localhost:5173")
+        policy.WithOrigins("http://localhost:8080", "http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -100,8 +101,8 @@ if (app.Environment.IsDevelopment())
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
-
 }
+
 app.UseCors("AllowReactApp");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -109,3 +110,5 @@ app.MapControllers();
 app.MapHub<ChatHub>("/chathub");
 
 app.Run();
+
+public partial class Program { }

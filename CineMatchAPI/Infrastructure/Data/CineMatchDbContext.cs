@@ -201,4 +201,15 @@ public class CineMatchDbContext : DbContext
             entity.HasIndex(m => new { m.MatchId, m.IsRead });
         });
     }
-}
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            if (!optionsBuilder.IsConfigured)
+            {
+                optionsBuilder.UseSqlite("Data Source=cinematch.db;Cache=Shared;Mode=ReadWriteCreate",
+                    options => options.CommandTimeout(60));
+            }
+    
+            base.OnConfiguring(optionsBuilder);
+        }
+    }

@@ -33,28 +33,40 @@ public class MatchService : IMatchService
     {
         var matches = await _matchRepository.GetByUserIdAsync(userId);
         
-        return matches.Select(m => new MatchDto(
-            m.Id,
-            GetOtherUser(m, userId),
-            new MovieDto(
-                m.Movie.Id,
-                m.Movie.Title,
-                m.Movie.Genre,
-                m.Movie.Rating,
-                m.Movie.Year,
-                m.Movie.ImageUrl,
-                m.Movie.Description,
-                m.Movie.Runtime
-            ),
-            m.MatchedAt
-        ));
+        var matchDtos = new List<MatchDto>();
+        
+        foreach (var m in matches)
+        {
+            if (m.Movie == null || m.User1 == null || m.User2 == null)
+                continue;
+                
+            matchDtos.Add(new MatchDto(
+                m.Id,
+                GetOtherUser(m, userId),
+                new MovieDto(
+                    m.Movie.Id,
+                    m.Movie.Title,
+                    m.Movie.Genre,
+                    m.Movie.Rating,
+                    m.Movie.Year,
+                    m.Movie.ImageUrl,
+                    m.Movie.Description,
+                    m.Movie.Runtime
+                ),
+                m.MatchedAt
+            ));
+        }
+        
+        return matchDtos;
     }
 
     public async Task<IEnumerable<MatchDto>> FindPotentialMatchesAsync(string userId)
     {
-        // Get user's liked movies
-        var userSwipes = await _swipeRepository.GetStarredMoviesByUserAsync(userId);
-        var likedMovieIds = userSwipes.Select(s => s.MovieId).ToList();
+        var userLikes = await _swipeRepository.GetUserLikesAsync(userId);
+
+        // Fix: Cast to the correct type if necessary
+        // Assuming userLikes is IEnumerable<Swipe> and Swipe has a MovieId property
+        var likedMovieIds = userLikes.Cast<Swipe>().Select(s => s.MovieId).ToHashSet();
 
         if (!likedMovieIds.Any())
         {
@@ -62,55 +74,48 @@ public class MatchService : IMatchService
         }
 
         var potentialMatches = new List<MatchDto>();
+        var alreadyMatched = (await _matchRepository.GetByUserIdAsync(userId))
+            .Select(m => m.User1Id == userId ? m.User2Id : m.User1Id)
+            .ToHashSet();
 
-        // For each liked movie, find other users who also liked it
-        foreach (var movieId in likedMovieIds)
+        var allUsers = await _userRepository.GetAllAsync();
+
+        foreach (var otherUser in allUsers.Where(u => u.Id != userId && !alreadyMatched.Contains(u.Id)))
         {
-            var existingMatch = await _matchRepository.GetMatchBetweenUsersForMovieAsync(userId, userId, movieId);
-            if (existingMatch != null) continue;
+            var otherUserLikes = await _swipeRepository.GetUserLikesAsync(otherUser.Id);
+            var commonMovieIds = otherUserLikes.Cast<Swipe>().Select(s => s.MovieId).Intersect(likedMovieIds).ToList();
 
-            // This is a simplified version - in production you'd query the database more efficiently
-            var allUsers = await _userRepository.GetAllAsync();
-            
-            foreach (var otherUser in allUsers.Where(u => u.Id != userId))
+            if (commonMovieIds.Any())
             {
-                var otherUserSwipe = await _swipeRepository.GetUserSwipeForMovieAsync(otherUser.Id, movieId);
-                
-                if (otherUserSwipe?.Liked == true)
+                var movieId = commonMovieIds.First();
+                var movie = await _movieRepository.GetByIdAsync(movieId);
+
+                if (movie != null)
                 {
-                    // Check if match already exists
-                    var matchExists = await _matchRepository.GetMatchBetweenUsersForMovieAsync(userId, otherUser.Id, movieId);
-                    if (matchExists == null)
-                    {
-                        var movie = await _movieRepository.GetByIdAsync(movieId);
-                        if (movie != null)
-                        {
-                            potentialMatches.Add(new MatchDto(
-                                Guid.NewGuid().ToString(),
-                                new UserDto(
-                                    otherUser.Id,
-                                    otherUser.Name,
-                                    otherUser.Email,
-                                    otherUser.Location,
-                                    otherUser.Bio,
-                                    otherUser.AvatarUrl,
-                                    new List<string>(),
-                                    otherUser.MovieLength
-                                ),
-                                new MovieDto(
-                                    movie.Id,
-                                    movie.Title,
-                                    movie.Genre,
-                                    movie.Rating,
-                                    movie.Year,
-                                    movie.ImageUrl,
-                                    movie.Description,
-                                    movie.Runtime
-                                ),
-                                DateTime.UtcNow
-                            ));
-                        }
-                    }
+                    potentialMatches.Add(new MatchDto(
+                        Guid.NewGuid().ToString(),
+                        new UserDto(
+                            otherUser.Id,
+                            otherUser.Name,
+                            otherUser.Email,
+                            otherUser.Location,
+                            otherUser.Bio,
+                            otherUser.AvatarUrl,
+                            new List<string>(),
+                            otherUser.MovieLength
+                        ),
+                        new MovieDto(
+                            movie.Id,
+                            movie.Title,
+                            movie.Genre,
+                            movie.Rating,
+                            movie.Year,
+                            movie.ImageUrl,
+                            movie.Description,
+                            movie.Runtime
+                        ),
+                        DateTime.UtcNow
+                    ));
                 }
             }
         }
@@ -118,9 +123,10 @@ public class MatchService : IMatchService
         return potentialMatches;
     }
 
-    private UserDto GetOtherUser(Match match, string currentUserId)
+    private UserDto GetOtherUser(Match match, string userId)
     {
-        var otherUser = match.User1Id == currentUserId ? match.User2 : match.User1;
+        var otherUser = match.User1Id == userId ? match.User2 : match.User1;
+        
         return new UserDto(
             otherUser.Id,
             otherUser.Name,

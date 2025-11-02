@@ -1,6 +1,7 @@
 ﻿using CineMatchAPI.Application.DTOs;
 using CineMatchAPI.Domain.Entities;
 using CineMatchAPI.Domain.Interfaces;
+using System.Text.Json;
 
 namespace CineMatchAPI.Application.Services;
 
@@ -43,6 +44,7 @@ public class AuthService : IAuthService
             Email = dto.Email,
             PasswordHash = _passwordService.HashPassword(dto.Password),
             Location = dto.Location,
+            Preferences = "[]", // Explicitly set default
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -84,7 +86,19 @@ public class AuthService : IAuthService
 
     private static UserDto MapToUserDto(User user)
     {
-        var preferences = System.Text.Json.JsonSerializer.Deserialize<List<string>>(user.Preferences) ?? new List<string>();
+        // FIX: Handle null or empty preferences safely
+        List<string> preferences;
+        try
+        {
+            preferences = string.IsNullOrEmpty(user.Preferences)
+                ? new List<string>()
+                : JsonSerializer.Deserialize<List<string>>(user.Preferences) ?? new List<string>();
+        }
+        catch (JsonException)
+        {
+            // If JSON is invalid, return empty list
+            preferences = new List<string>();
+        }
         
         return new UserDto(
             user.Id,

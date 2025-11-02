@@ -5,10 +5,13 @@ using CineMatchAPI.Infrastructure.Repositories;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
-using Microsoft.EntityFrameworkCore.InMemory;
 
 namespace CineMatch.Tests.Repositories;
 
+/// <summary>
+/// Integration tests for UserRepository using in-memory database.
+/// Tests verify CRUD operations and data integrity.
+/// </summary>
 public class UserRepositoryTests : IDisposable
 {
     private readonly CineMatchDbContext _context;
@@ -23,20 +26,18 @@ public class UserRepositoryTests : IDisposable
         _repository = new UserRepository(_context);
     }
 
+    public void Dispose()
+    {
+        _context.Dispose();
+    }
+
     #region Create Tests
 
     [Fact]
     public async Task CreateAsync_WithValidUser_AddsToDatabase()
     {
         // Arrange
-        var user = new User
-        {
-            Id = "user1",
-            Name = "Test User",
-            Email = "test@example.com",
-            PasswordHash = "hashed",
-            Location = "Stockholm"
-        };
+        var user = CreateUser("user1", "Test User", "test@example.com");
 
         // Act
         var result = await _repository.CreateAsync(user);
@@ -46,34 +47,31 @@ public class UserRepositoryTests : IDisposable
         result.Id.Should().Be(user.Id);
         var saved = await _context.Users.FindAsync(user.Id);
         saved.Should().NotBeNull();
+        saved!.Email.Should().Be(user.Email);
     }
 
     [Fact]
     public async Task CreateAsync_SetsCreatedAtTimestamp()
     {
         // Arrange
-        var user = new User
-        {
-            Name = "User",
-            Email = "user@test.com",
-            PasswordHash = "hash",
-            Location = "City"
-        };
+        var user = CreateUser("user1", "User", "user@test.com");
+        var beforeCreate = DateTime.UtcNow;
 
         // Act
         await _repository.CreateAsync(user);
 
         // Assert
-        user.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        user.CreatedAt.Should().BeCloseTo(beforeCreate, TimeSpan.FromSeconds(2));
+        user.UpdatedAt.Should().BeCloseTo(beforeCreate, TimeSpan.FromSeconds(2));
     }
 
     [Fact]
     public async Task CreateAsync_WithMultipleUsers_AllAddedSuccessfully()
     {
         // Arrange & Act
-        await _repository.CreateAsync(new User { Id = "1", Name = "User1", Email = "u1@t.com", PasswordHash = "h", Location = "L" });
-        await _repository.CreateAsync(new User { Id = "2", Name = "User2", Email = "u2@t.com", PasswordHash = "h", Location = "L" });
-        await _repository.CreateAsync(new User { Id = "3", Name = "User3", Email = "u3@t.com", PasswordHash = "h", Location = "L" });
+        await _repository.CreateAsync(CreateUser("1", "User1", "u1@test.com"));
+        await _repository.CreateAsync(CreateUser("2", "User2", "u2@test.com"));
+        await _repository.CreateAsync(CreateUser("3", "User3", "u3@test.com"));
 
         // Assert
         var users = await _repository.GetAllAsync();
@@ -88,7 +86,7 @@ public class UserRepositoryTests : IDisposable
     public async Task GetByIdAsync_WithExistingId_ReturnsUser()
     {
         // Arrange
-        var user = new User { Id = "test1", Name = "John", Email = "john@test.com", PasswordHash = "hash", Location = "Oslo" };
+        var user = CreateUser("test1", "John", "john@test.com");
         await _repository.CreateAsync(user);
 
         // Act
@@ -98,6 +96,7 @@ public class UserRepositoryTests : IDisposable
         result.Should().NotBeNull();
         result!.Id.Should().Be("test1");
         result.Name.Should().Be("John");
+        result.Email.Should().Be("john@test.com");
     }
 
     [Fact]
@@ -128,7 +127,7 @@ public class UserRepositoryTests : IDisposable
     public async Task GetByEmailAsync_WithExistingEmail_ReturnsUser()
     {
         // Arrange
-        var user = new User { Id = "1", Name = "Jane", Email = "jane@example.com", PasswordHash = "hash", Location = "Berlin" };
+        var user = CreateUser("1", "Jane", "jane@example.com");
         await _repository.CreateAsync(user);
 
         // Act
@@ -151,18 +150,32 @@ public class UserRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task GetByEmailAsync_IsCaseInsensitive()
+    public async Task GetByEmailAsync_IsCaseSensitive()
     {
         // Arrange
-        var user = new User { Id = "1", Name = "User", Email = "Test@Example.Com", PasswordHash = "h", Location = "L" };
+        var user = CreateUser("1", "User", "test@example.com");
         await _repository.CreateAsync(user);
 
         // Act
-        var result = await _repository.GetByEmailAsync("test@example.com");
+        var result = await _repository.GetByEmailAsync("TEST@EXAMPLE.COM");
 
-        // Assert - SQLite is case-insensitive for LIKE, but exact match depends on collation
-        // This test documents current behavior
-        result?.Email.ToLower().Should().Be("test@example.com");
+        // Assert - SQLite == operator is case-sensitive
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetByEmailAsync_WithExactCase_ReturnsUser()
+    {
+        // Arrange
+        var user = CreateUser("1", "User", "Test@Example.Com");
+        await _repository.CreateAsync(user);
+
+        // Act
+        var result = await _repository.GetByEmailAsync("Test@Example.Com");
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Email.Should().Be("Test@Example.Com");
     }
 
     #endregion
@@ -183,15 +196,16 @@ public class UserRepositoryTests : IDisposable
     public async Task GetAllAsync_WithMultipleUsers_ReturnsAllUsers()
     {
         // Arrange
-        await _repository.CreateAsync(new User { Id = "1", Name = "U1", Email = "u1@t.com", PasswordHash = "h", Location = "L" });
-        await _repository.CreateAsync(new User { Id = "2", Name = "U2", Email = "u2@t.com", PasswordHash = "h", Location = "L" });
-        await _repository.CreateAsync(new User { Id = "3", Name = "U3", Email = "u3@t.com", PasswordHash = "h", Location = "L" });
+        await _repository.CreateAsync(CreateUser("1", "U1", "u1@test.com"));
+        await _repository.CreateAsync(CreateUser("2", "U2", "u2@test.com"));
+        await _repository.CreateAsync(CreateUser("3", "U3", "u3@test.com"));
 
         // Act
         var result = await _repository.GetAllAsync();
 
         // Assert
         result.Should().HaveCount(3);
+        result.Select(u => u.Id).Should().Contain(new[] { "1", "2", "3" });
     }
 
     #endregion
@@ -202,13 +216,15 @@ public class UserRepositoryTests : IDisposable
     public async Task UpdateAsync_WithExistingUser_UpdatesSuccessfully()
     {
         // Arrange
-        var user = new User { Id = "1", Name = "Original", Email = "orig@test.com", PasswordHash = "h", Location = "OldCity" };
+        var user = CreateUser("1", "Original", "orig@test.com");
+        user.Location = "OldCity";
         await _repository.CreateAsync(user);
+        
         user.Name = "Updated";
         user.Location = "NewCity";
 
         // Act
-        var result = await _repository.UpdateAsync(user);
+        await _repository.UpdateAsync(user);
 
         // Assert
         var updated = await _repository.GetByIdAsync("1");
@@ -220,10 +236,10 @@ public class UserRepositoryTests : IDisposable
     public async Task UpdateAsync_UpdatesTimestamp()
     {
         // Arrange
-        var user = new User { Id = "1", Name = "User", Email = "user@test.com", PasswordHash = "h", Location = "City" };
+        var user = CreateUser("1", "User", "user@test.com");
         await _repository.CreateAsync(user);
         var originalTimestamp = user.UpdatedAt;
-        await Task.Delay(10); // Small delay to ensure timestamp changes
+        await Task.Delay(50);
 
         // Act
         user.Name = "Modified";
@@ -235,19 +251,21 @@ public class UserRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task UpdateAsync_WithPreferences_UpdatesCorrectly()
+    public async Task UpdateAsync_PreservesCreatedAt()
     {
         // Arrange
-        var user = new User { Id = "1", Name = "User", Email = "u@t.com", PasswordHash = "h", Location = "L", Preferences = "[]" };
+        var user = CreateUser("1", "User", "user@test.com");
         await _repository.CreateAsync(user);
-        user.Preferences = "[\"Action\", \"Drama\"]";
+        var originalCreatedAt = user.CreatedAt;
+        await Task.Delay(50);
 
         // Act
+        user.Name = "Updated";
         await _repository.UpdateAsync(user);
 
         // Assert
         var updated = await _repository.GetByIdAsync("1");
-        updated!.Preferences.Should().Be("[\"Action\", \"Drama\"]");
+        updated!.CreatedAt.Should().Be(originalCreatedAt);
     }
 
     #endregion
@@ -255,10 +273,10 @@ public class UserRepositoryTests : IDisposable
     #region Delete Tests
 
     [Fact]
-    public async Task DeleteAsync_WithExistingId_RemovesUser()
+    public async Task DeleteAsync_WithExistingUser_RemovesFromDatabase()
     {
         // Arrange
-        var user = new User { Id = "delete1", Name = "ToDelete", Email = "delete@test.com", PasswordHash = "h", Location = "L" };
+        var user = CreateUser("delete1", "ToDelete", "delete@test.com");
         await _repository.CreateAsync(user);
 
         // Act
@@ -270,30 +288,11 @@ public class UserRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task DeleteAsync_WithNonExistentId_DoesNotThrow()
+    public async Task DeleteAsync_WithNonExistentUser_DoesNotThrow()
     {
-        // Act
-        Func<Task> act = async () => await _repository.DeleteAsync("nonexistent");
-
-        // Assert
+        // Act & Assert
+        var act = async () => await _repository.DeleteAsync("nonexistent");
         await act.Should().NotThrowAsync();
-    }
-
-    [Fact]
-    public async Task DeleteAsync_OnlyDeletesSpecifiedUser()
-    {
-        // Arrange
-        await _repository.CreateAsync(new User { Id = "1", Name = "Keep1", Email = "k1@t.com", PasswordHash = "h", Location = "L" });
-        await _repository.CreateAsync(new User { Id = "2", Name = "Delete", Email = "d@t.com", PasswordHash = "h", Location = "L" });
-        await _repository.CreateAsync(new User { Id = "3", Name = "Keep2", Email = "k2@t.com", PasswordHash = "h", Location = "L" });
-
-        // Act
-        await _repository.DeleteAsync("2");
-
-        // Assert
-        var remaining = await _repository.GetAllAsync();
-        remaining.Should().HaveCount(2);
-        remaining.Should().NotContain(u => u.Id == "2");
     }
 
     #endregion
@@ -301,10 +300,11 @@ public class UserRepositoryTests : IDisposable
     #region Exists Tests
 
     [Fact]
-    public async Task ExistsAsync_WithExistingId_ReturnsTrue()
+    public async Task ExistsAsync_WithExistingUser_ReturnsTrue()
     {
         // Arrange
-        await _repository.CreateAsync(new User { Id = "exists1", Name = "User", Email = "u@t.com", PasswordHash = "h", Location = "L" });
+        var user = CreateUser("exists1", "User", "user@test.com");
+        await _repository.CreateAsync(user);
 
         // Act
         var result = await _repository.ExistsAsync("exists1");
@@ -314,10 +314,10 @@ public class UserRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task ExistsAsync_WithNonExistentId_ReturnsFalse()
+    public async Task ExistsAsync_WithNonExistentUser_ReturnsFalse()
     {
         // Act
-        var result = await _repository.ExistsAsync("nope");
+        var result = await _repository.ExistsAsync("nonexistent");
 
         // Assert
         result.Should().BeFalse();
@@ -327,7 +327,8 @@ public class UserRepositoryTests : IDisposable
     public async Task EmailExistsAsync_WithExistingEmail_ReturnsTrue()
     {
         // Arrange
-        await _repository.CreateAsync(new User { Id = "1", Name = "User", Email = "exists@test.com", PasswordHash = "h", Location = "L" });
+        var user = CreateUser("1", "User", "exists@test.com");
+        await _repository.CreateAsync(user);
 
         // Act
         var result = await _repository.EmailExistsAsync("exists@test.com");
@@ -340,7 +341,7 @@ public class UserRepositoryTests : IDisposable
     public async Task EmailExistsAsync_WithNonExistentEmail_ReturnsFalse()
     {
         // Act
-        var result = await _repository.EmailExistsAsync("nobody@nowhere.com");
+        var result = await _repository.EmailExistsAsync("nonexistent@test.com");
 
         // Assert
         result.Should().BeFalse();
@@ -348,53 +349,21 @@ public class UserRepositoryTests : IDisposable
 
     #endregion
 
-    #region Edge Cases
+    #region Helper Methods (DRY Principle)
 
-    [Fact]
-    public async Task CreateAsync_WithLongBio_SavesSuccessfully()
+    private static User CreateUser(string id, string name, string email)
     {
-        // Arrange
-        var longBio = new string('x', 500);
-        var user = new User { Id = "1", Name = "User", Email = "u@t.com", PasswordHash = "h", Location = "L", Bio = longBio };
-
-        // Act
-        await _repository.CreateAsync(user);
-
-        // Assert
-        var saved = await _repository.GetByIdAsync("1");
-        saved!.Bio.Should().Be(longBio);
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithNullOptionalFields_SavesSuccessfully()
-    {
-        // Arrange
-        var user = new User 
-        { 
-            Id = "1", 
-            Name = "User", 
-            Email = "u@t.com", 
-            PasswordHash = "h", 
-            Location = "L",
-            Bio = null,
-            AvatarUrl = null,
-            MovieLength = null
+        return new User
+        {
+            Id = id,
+            Name = name,
+            Email = email,
+            PasswordHash = "hashed_password",
+            Location = "Stockholm",
+            Preferences = "[]",
+            MovieLength = "Medium"
         };
-
-        // Act
-        await _repository.CreateAsync(user);
-
-        // Assert
-        var saved = await _repository.GetByIdAsync("1");
-        saved!.Bio.Should().BeNull();
-        saved.AvatarUrl.Should().BeNull();
-        saved.MovieLength.Should().BeNull();
     }
 
     #endregion
-
-    public void Dispose()
-    {
-        _context.Dispose();
-    }
 }

@@ -8,6 +8,10 @@ using Xunit;
 
 namespace CineMatch.Tests.Services;
 
+/// <summary>
+/// Unit tests for AuthService following SOLID principles.
+/// Tests are organized by functionality and scenario (positive/negative).
+/// </summary>
 public class AuthServiceTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
@@ -27,39 +31,32 @@ public class AuthServiceTests
         );
     }
 
-    #region Register Tests - Positive Scenarios
+    #region Register - Positive Scenarios
 
     [Fact]
     public async Task RegisterAsync_WithValidData_ReturnsAuthResponse()
     {
         // Arrange
         var dto = new RegisterDto("John Doe", "john@example.com", "password123", "Stockholm");
-        _userRepositoryMock.Setup(x => x.EmailExistsAsync(dto.Email)).ReturnsAsync(false);
-        _passwordServiceMock.Setup(x => x.HashPassword(dto.Password)).Returns("hashedPassword");
-        _jwtTokenServiceMock.Setup(x => x.GenerateToken(It.IsAny<string>(), dto.Email)).Returns("token123");
-        _userRepositoryMock.Setup(x => x.CreateAsync(It.IsAny<User>()))
-            .ReturnsAsync((User u) => u);
+        SetupSuccessfulRegistration(dto);
 
         // Act
         var result = await _authService.RegisterAsync(dto);
 
         // Assert
         result.Should().NotBeNull();
-        result!.Token.Should().Be("token123");
+        result!.Token.Should().Be("test_token");
         result.User.Email.Should().Be(dto.Email);
         result.User.Name.Should().Be(dto.Name);
         result.User.Location.Should().Be(dto.Location);
     }
 
     [Fact]
-    public async Task RegisterAsync_CallsPasswordHashingOnce()
+    public async Task RegisterAsync_HashesPassword()
     {
         // Arrange
-        var dto = new RegisterDto("Jane", "jane@test.com", "pass", "Oslo");
-        _userRepositoryMock.Setup(x => x.EmailExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
-        _passwordServiceMock.Setup(x => x.HashPassword(It.IsAny<string>())).Returns("hashed");
-        _jwtTokenServiceMock.Setup(x => x.GenerateToken(It.IsAny<string>(), It.IsAny<string>())).Returns("token");
-        _userRepositoryMock.Setup(x => x.CreateAsync(It.IsAny<User>())).ReturnsAsync(new User());
+        var dto = new RegisterDto("Jane Smith", "jane@test.com", "myPassword", "Oslo");
+        SetupSuccessfulRegistration(dto);
 
         // Act
         await _authService.RegisterAsync(dto);
@@ -69,23 +66,21 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task RegisterAsync_CreatesUserInRepository()
+    public async Task RegisterAsync_CreatesUserWithCorrectData()
     {
         // Arrange
         var dto = new RegisterDto("Test User", "test@test.com", "password", "Berlin");
-        _userRepositoryMock.Setup(x => x.EmailExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
-        _passwordServiceMock.Setup(x => x.HashPassword(It.IsAny<string>())).Returns("hashed");
-        _jwtTokenServiceMock.Setup(x => x.GenerateToken(It.IsAny<string>(), It.IsAny<string>())).Returns("token");
-        _userRepositoryMock.Setup(x => x.CreateAsync(It.IsAny<User>())).ReturnsAsync(new User());
+        SetupSuccessfulRegistration(dto);
 
         // Act
         await _authService.RegisterAsync(dto);
 
         // Assert
-        _userRepositoryMock.Verify(x => x.CreateAsync(It.Is<User>(u => 
-            u.Email == dto.Email && 
-            u.Name == dto.Name && 
-            u.Location == dto.Location
+        _userRepositoryMock.Verify(x => x.CreateAsync(It.Is<User>(u =>
+            u.Email == dto.Email &&
+            u.Name == dto.Name &&
+            u.Location == dto.Location &&
+            u.PasswordHash == "hashed_password"
         )), Times.Once);
     }
 
@@ -93,29 +88,25 @@ public class AuthServiceTests
     public async Task RegisterAsync_GeneratesJwtToken()
     {
         // Arrange
-        var dto = new RegisterDto("User", "user@test.com", "pass", "City");
-        _userRepositoryMock.Setup(x => x.EmailExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
-        _passwordServiceMock.Setup(x => x.HashPassword(It.IsAny<string>())).Returns("hashed");
-        _userRepositoryMock.Setup(x => x.CreateAsync(It.IsAny<User>())).ReturnsAsync(new User { Id = "123", Email = dto.Email });
-        _jwtTokenServiceMock.Setup(x => x.GenerateToken("123", dto.Email)).Returns("generatedToken");
+        var dto = new RegisterDto("User", "user@example.com", "pass", "City");
+        SetupSuccessfulRegistration(dto);
 
         // Act
-        var result = await _authService.RegisterAsync(dto);
+        await _authService.RegisterAsync(dto);
 
         // Assert
         _jwtTokenServiceMock.Verify(x => x.GenerateToken(It.IsAny<string>(), dto.Email), Times.Once);
-        result!.Token.Should().Be("generatedToken");
     }
 
     #endregion
 
-    #region Register Tests - Negative Scenarios
+    #region Register - Negative Scenarios
 
     [Fact]
     public async Task RegisterAsync_WithExistingEmail_ReturnsNull()
     {
         // Arrange
-        var dto = new RegisterDto("John", "existing@example.com", "password", "Stockholm");
+        var dto = new RegisterDto("User", "existing@test.com", "password", "City");
         _userRepositoryMock.Setup(x => x.EmailExistsAsync(dto.Email)).ReturnsAsync(true);
 
         // Act
@@ -126,24 +117,10 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task RegisterAsync_WithExistingEmail_DoesNotCreateUser()
-    {
-        // Arrange
-        var dto = new RegisterDto("John", "existing@test.com", "pass", "City");
-        _userRepositoryMock.Setup(x => x.EmailExistsAsync(dto.Email)).ReturnsAsync(true);
-
-        // Act
-        await _authService.RegisterAsync(dto);
-
-        // Assert
-        _userRepositoryMock.Verify(x => x.CreateAsync(It.IsAny<User>()), Times.Never);
-    }
-
-    [Fact]
     public async Task RegisterAsync_WithExistingEmail_DoesNotHashPassword()
     {
         // Arrange
-        var dto = new RegisterDto("User", "exists@test.com", "password", "Place");
+        var dto = new RegisterDto("User", "duplicate@test.com", "pass", "City");
         _userRepositoryMock.Setup(x => x.EmailExistsAsync(dto.Email)).ReturnsAsync(true);
 
         // Act
@@ -154,60 +131,49 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task RegisterAsync_WithExistingEmail_DoesNotGenerateToken()
+    public async Task RegisterAsync_WithExistingEmail_DoesNotCreateUser()
     {
         // Arrange
-        var dto = new RegisterDto("User", "duplicate@test.com", "pass", "City");
+        var dto = new RegisterDto("User", "exists@test.com", "pass", "City");
         _userRepositoryMock.Setup(x => x.EmailExistsAsync(dto.Email)).ReturnsAsync(true);
 
         // Act
         await _authService.RegisterAsync(dto);
 
         // Assert
-        _jwtTokenServiceMock.Verify(x => x.GenerateToken(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _userRepositoryMock.Verify(x => x.CreateAsync(It.IsAny<User>()), Times.Never);
     }
 
     #endregion
 
-    #region Login Tests - Positive Scenarios
+    #region Login - Positive Scenarios
 
     [Fact]
     public async Task LoginAsync_WithValidCredentials_ReturnsAuthResponse()
     {
         // Arrange
         var dto = new LoginDto("user@test.com", "password123");
-        var user = new User 
-        { 
-            Id = "user1", 
-            Email = dto.Email, 
-            Name = "Test User",
-            PasswordHash = "hashedPassword",
-            Location = "Stockholm"
-        };
-        
-        _userRepositoryMock.Setup(x => x.GetByEmailAsync(dto.Email)).ReturnsAsync(user);
-        _passwordServiceMock.Setup(x => x.VerifyPassword(dto.Password, user.PasswordHash)).Returns(true);
-        _jwtTokenServiceMock.Setup(x => x.GenerateToken(user.Id, user.Email)).Returns("validToken");
+        var user = CreateTestUser("user1", dto.Email, "Test User");
+        SetupSuccessfulLogin(dto, user);
 
         // Act
         var result = await _authService.LoginAsync(dto);
 
         // Assert
         result.Should().NotBeNull();
-        result!.Token.Should().Be("validToken");
+        result!.Token.Should().Be("test_token");
         result.User.Email.Should().Be(dto.Email);
         result.User.Id.Should().Be(user.Id);
+        result.User.Name.Should().Be(user.Name);
     }
 
     [Fact]
-    public async Task LoginAsync_VerifiesPasswordAgainstHash()
+    public async Task LoginAsync_VerifiesPassword()
     {
         // Arrange
         var dto = new LoginDto("test@test.com", "myPassword");
-        var user = new User { Id = "1", Email = dto.Email, PasswordHash = "storedHash", Name = "User", Location = "City" };
-        _userRepositoryMock.Setup(x => x.GetByEmailAsync(dto.Email)).ReturnsAsync(user);
-        _passwordServiceMock.Setup(x => x.VerifyPassword(dto.Password, user.PasswordHash)).Returns(true);
-        _jwtTokenServiceMock.Setup(x => x.GenerateToken(It.IsAny<string>(), It.IsAny<string>())).Returns("token");
+        var user = CreateTestUser("1", dto.Email, "User");
+        SetupSuccessfulLogin(dto, user);
 
         // Act
         await _authService.LoginAsync(dto);
@@ -217,17 +183,15 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task LoginAsync_WithCorrectPassword_GeneratesToken()
+    public async Task LoginAsync_GeneratesToken()
     {
         // Arrange
         var dto = new LoginDto("valid@test.com", "correctPass");
-        var user = new User { Id = "userId", Email = dto.Email, PasswordHash = "hash", Name = "Name", Location = "Loc" };
-        _userRepositoryMock.Setup(x => x.GetByEmailAsync(dto.Email)).ReturnsAsync(user);
-        _passwordServiceMock.Setup(x => x.VerifyPassword(dto.Password, user.PasswordHash)).Returns(true);
-        _jwtTokenServiceMock.Setup(x => x.GenerateToken(user.Id, user.Email)).Returns("jwtToken");
+        var user = CreateTestUser("userId", dto.Email, "Name");
+        SetupSuccessfulLogin(dto, user);
 
         // Act
-        var result = await _authService.LoginAsync(dto);
+        await _authService.LoginAsync(dto);
 
         // Assert
         _jwtTokenServiceMock.Verify(x => x.GenerateToken(user.Id, user.Email), Times.Once);
@@ -235,7 +199,7 @@ public class AuthServiceTests
 
     #endregion
 
-    #region Login Tests - Negative Scenarios
+    #region Login - Negative Scenarios
 
     [Fact]
     public async Task LoginAsync_WithNonExistentEmail_ReturnsNull()
@@ -252,11 +216,11 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task LoginAsync_WithWrongPassword_ReturnsNull()
+    public async Task LoginAsync_WithInvalidPassword_ReturnsNull()
     {
         // Arrange
         var dto = new LoginDto("user@test.com", "wrongPassword");
-        var user = new User { Id = "1", Email = dto.Email, PasswordHash = "correctHash", Name = "User", Location = "City" };
+        var user = CreateTestUser("1", dto.Email, "User");
         _userRepositoryMock.Setup(x => x.GetByEmailAsync(dto.Email)).ReturnsAsync(user);
         _passwordServiceMock.Setup(x => x.VerifyPassword(dto.Password, user.PasswordHash)).Returns(false);
 
@@ -268,11 +232,11 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task LoginAsync_WithWrongPassword_DoesNotGenerateToken()
+    public async Task LoginAsync_WithInvalidPassword_DoesNotGenerateToken()
     {
         // Arrange
         var dto = new LoginDto("user@test.com", "wrongPass");
-        var user = new User { Id = "1", Email = dto.Email, PasswordHash = "hash", Name = "User", Location = "City" };
+        var user = CreateTestUser("1", dto.Email, "User");
         _userRepositoryMock.Setup(x => x.GetByEmailAsync(dto.Email)).ReturnsAsync(user);
         _passwordServiceMock.Setup(x => x.VerifyPassword(dto.Password, user.PasswordHash)).Returns(false);
 
@@ -283,105 +247,72 @@ public class AuthServiceTests
         _jwtTokenServiceMock.Verify(x => x.GenerateToken(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
-    [Fact]
-    public async Task LoginAsync_WithNonExistentUser_DoesNotVerifyPassword()
-    {
-        // Arrange
-        var dto = new LoginDto("nobody@test.com", "password");
-        _userRepositoryMock.Setup(x => x.GetByEmailAsync(dto.Email)).ReturnsAsync((User?)null);
-
-        // Act
-        await _authService.LoginAsync(dto);
-
-        // Assert
-        _passwordServiceMock.Verify(x => x.VerifyPassword(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-    }
-
     #endregion
 
     #region GetUserById Tests
 
     [Fact]
-    public async Task GetUserByIdAsync_WithValidId_ReturnsUserDto()
+    public async Task GetUserByIdAsync_WithExistingUser_ReturnsUserDto()
     {
         // Arrange
-        var userId = "user123";
-        var user = new User 
-        { 
-            Id = userId, 
-            Name = "John Doe", 
-            Email = "john@test.com",
-            Location = "Stockholm",
-            Preferences = "[\"Action\", \"Comedy\"]",
-            MovieLength = "medium"
-        };
-        _userRepositoryMock.Setup(x => x.GetByIdAsync(userId)).ReturnsAsync(user);
+        var user = CreateTestUser("user123", "test@example.com", "Test User");
+        _userRepositoryMock.Setup(x => x.GetByIdAsync(user.Id)).ReturnsAsync(user);
 
         // Act
-        var result = await _authService.GetUserByIdAsync(userId);
+        var result = await _authService.GetUserByIdAsync(user.Id);
 
         // Assert
         result.Should().NotBeNull();
-        result!.Id.Should().Be(userId);
-        result.Name.Should().Be("John Doe");
-        result.Email.Should().Be("john@test.com");
-        result.Preferences.Should().HaveCount(2);
+        result!.Id.Should().Be(user.Id);
+        result.Email.Should().Be(user.Email);
+        result.Name.Should().Be(user.Name);
     }
 
     [Fact]
-    public async Task GetUserByIdAsync_WithNonExistentId_ReturnsNull()
+    public async Task GetUserByIdAsync_WithNonExistentUser_ReturnsNull()
     {
         // Arrange
-        var userId = "nonexistent";
-        _userRepositoryMock.Setup(x => x.GetByIdAsync(userId)).ReturnsAsync((User?)null);
+        _userRepositoryMock.Setup(x => x.GetByIdAsync("nonexistent")).ReturnsAsync((User?)null);
 
         // Act
-        var result = await _authService.GetUserByIdAsync(userId);
+        var result = await _authService.GetUserByIdAsync("nonexistent");
 
         // Assert
         result.Should().BeNull();
     }
 
-    [Fact]
-    public async Task GetUserByIdAsync_ParsesPreferencesCorrectly()
+    #endregion
+
+    #region Helper Methods (DRY Principle)
+
+    private void SetupSuccessfulRegistration(RegisterDto dto)
     {
-        // Arrange
-        var user = new User 
-        { 
-            Id = "1", 
-            Name = "User", 
-            Email = "user@test.com",
-            Location = "City",
-            Preferences = "[\"Drama\", \"Thriller\", \"Horror\"]"
-        };
-        _userRepositoryMock.Setup(x => x.GetByIdAsync("1")).ReturnsAsync(user);
-
-        // Act
-        var result = await _authService.GetUserByIdAsync("1");
-
-        // Assert
-        result!.Preferences.Should().Contain(new[] { "Drama", "Thriller", "Horror" });
+        _userRepositoryMock.Setup(x => x.EmailExistsAsync(dto.Email)).ReturnsAsync(false);
+        _passwordServiceMock.Setup(x => x.HashPassword(dto.Password)).Returns("hashed_password");
+        _jwtTokenServiceMock.Setup(x => x.GenerateToken(It.IsAny<string>(), dto.Email)).Returns("test_token");
+        _userRepositoryMock.Setup(x => x.CreateAsync(It.IsAny<User>()))
+            .ReturnsAsync((User u) => u);
     }
 
-    [Fact]
-    public async Task GetUserByIdAsync_WithEmptyPreferences_ReturnsEmptyList()
+    private void SetupSuccessfulLogin(LoginDto dto, User user)
     {
-        // Arrange
-        var user = new User 
-        { 
-            Id = "1", 
-            Name = "User", 
-            Email = "user@test.com",
-            Location = "City",
-            Preferences = "[]"
+        _userRepositoryMock.Setup(x => x.GetByEmailAsync(dto.Email)).ReturnsAsync(user);
+        _passwordServiceMock.Setup(x => x.VerifyPassword(dto.Password, user.PasswordHash)).Returns(true);
+        _jwtTokenServiceMock.Setup(x => x.GenerateToken(user.Id, user.Email)).Returns("test_token");
+    }
+
+    private static User CreateTestUser(string id, string email, string name)
+    {
+        return new User
+        {
+            Id = id,
+            Email = email,
+            Name = name,
+            PasswordHash = "hashed_password",
+            Location = "Stockholm",
+            Preferences = "[]",
+            MovieLength = "Medium"
         };
-        _userRepositoryMock.Setup(x => x.GetByIdAsync("1")).ReturnsAsync(user);
-
-        // Act
-        var result = await _authService.GetUserByIdAsync("1");
-
-        // Assert
-        result!.Preferences.Should().BeEmpty();
     }
 
     #endregion

@@ -1,42 +1,54 @@
 ﻿using CineMatchAPI.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CineMatchAPI.Controllers;
 
-/// <summary>
-/// Controller for movie-related endpoints.
-/// Handles fetching movies based on user preferences.
-/// </summary>
 [ApiController]
 [Route("api/movies")]
 [Authorize]
 public class MovieController : ControllerBase
 {
-    private readonly MovieService _movieService;
+    private readonly IMovieService _movieService;
+    private readonly ILogger<MovieController> _logger;
 
-    public MovieController(MovieService movieService)
+    public MovieController(IMovieService movieService, ILogger<MovieController> logger)
     {
         _movieService = movieService;
+        _logger = logger;
     }
 
-    /// <summary>
-    /// Get movies based on user preferences
-    /// GET: api/movies?genre=Action&length=short&page=1
-    /// </summary>
+    private string GetUserId() => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+
     [HttpGet]
     public async Task<IActionResult> GetMovies(
         [FromQuery] string genre,
         [FromQuery] string length,
         [FromQuery] int page = 1)
     {
-        // Validate required parameters
-        if (string.IsNullOrEmpty(genre) || string.IsNullOrEmpty(length))
+        try
         {
-            return BadRequest(new { message = "Genre and length are required" });
-        }
+            if (string.IsNullOrEmpty(genre) || string.IsNullOrEmpty(length))
+            {
+                return BadRequest(new { message = "Genre and length are required" });
+            }
 
-        var movies = await _movieService.GetMoviesByPreferencesAsync(genre, length, page);
-        return Ok(movies);
+            var userId = GetUserId();
+            var movies = await _movieService.GetMoviesByPreferencesAsync(userId, genre, length, page);
+            var movieList = movies.ToList();
+            
+            return Ok(new {
+                data = movieList,
+                totalCount = movieList.Count,
+                page = page,
+                totalPages = 1
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching movies");
+            return StatusCode(500, new { message = "Error fetching movies", error = ex.Message });
+        }
     }
 }

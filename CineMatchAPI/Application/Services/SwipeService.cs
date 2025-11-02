@@ -6,7 +6,7 @@ namespace CineMatchAPI.Application.Services;
 
 public interface ISwipeService
 {
-    Task<bool> SwipeMovieAsync(string userId, SwipeDto dto);
+    Task<SwipeResultDto> SwipeMovieAsync(string userId, SwipeDto dto);
     Task<IEnumerable<MovieDto>> GetUserStarredMoviesAsync(string userId);
     Task<int> GetSwipeCountAsync(string userId);
 }
@@ -30,31 +30,35 @@ public class SwipeService : ISwipeService
         _userRepository = userRepository;
     }
 
-    public async Task<bool> SwipeMovieAsync(string userId, SwipeDto dto)
+    public async Task<SwipeResultDto> SwipeMovieAsync(string userId, SwipeDto dto)
     {
-        // Check if already swiped
         var existing = await _swipeRepository.GetUserSwipeForMovieAsync(userId, dto.MovieId);
-        if (existing != null) return false;
+        if (existing != null)
+        {
+            return new SwipeResultDto(false, false, null);
+        }
 
-        // Create swipe
         var swipe = new Swipe
         {
             Id = Guid.NewGuid().ToString(),
             UserId = userId,
             MovieId = dto.MovieId,
-            Liked = dto.Stared,
+            Liked = dto.Liked,
             SwipedAt = DateTime.UtcNow
         };
 
         await _swipeRepository.CreateAsync(swipe);
 
-        // If liked, check for potential matches
-        if (dto.Stared)
+        if (dto.Liked)
         {
-            await CheckAndCreateMatchesAsync(userId, dto.MovieId);
+            var matchResult = await CheckAndCreateMatchesAsync(userId, dto.MovieId);
+            if (matchResult.matched)
+            {
+                return new SwipeResultDto(true, true, matchResult.matchId);
+            }
         }
 
-        return true;
+        return new SwipeResultDto(true, false, null);
     }
 
     public async Task<IEnumerable<MovieDto>> GetUserStarredMoviesAsync(string userId)
@@ -78,13 +82,40 @@ public class SwipeService : ISwipeService
         return swipes.Count();
     }
 
-    private async Task CheckAndCreateMatchesAsync(string userId, string movieId)
+    private async Task<(bool matched, string? matchId)> CheckAndCreateMatchesAsync(string userId, string movieId)
     {
-        // Find other users who liked the same movie
-        var allSwipes = await _swipeRepository.GetByUserIdAsync(userId); // This gets all by user, need to query differently
+        // Get all users who also liked this movie
+        var allSwipesForMovie = await _swipeRepository.GetSwipesByMovieIdAsync(movieId);
         
-        // For now, we'll implement a simple version
-        // In production, you'd query the database for other users who liked this specific movie
-        // and aren't already matched with this user
+        var otherUsersWhoLiked = allSwipesForMovie
+            .Where(s => s.UserId != userId && s.Liked)
+            .Select(s => s.UserId)
+            .ToList();
+
+        foreach (var otherUserId in otherUsersWhoLiked)
+        {
+            // Check if match already exists
+            var existingMatch = await _matchRepository.GetMatchBetweenUsersForMovieAsync(userId, otherUserId, movieId);
+            if (existingMatch != null) continue;
+
+            // Create new match
+            var match = new Match
+            {
+                Id = Guid.NewGuid().ToString(),
+                User1Id = userId,
+                User2Id = otherUserId,
+                MovieId = movieId,
+                MatchedAt = DateTime.UtcNow
+            };
+
+            await _matchRepository.CreateAsync(match);
+            
+            // Return the first match created
+            return (true, match.Id);
+        }
+
+        return (false, null);
     }
 }
+
+public record SwipeResultDto(bool Success, bool Matched, string? MatchId);
