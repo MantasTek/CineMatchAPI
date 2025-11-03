@@ -369,10 +369,3 @@ public class ApiIntegrationTests : IClassFixture<CineMatchWebApplicationFactory>
 
     #endregion
 }
-
-#region DTOs for Tests
-
-public record AuthResponse(string Token, UserResponse User);
-public record UserResponse(string Id, string Name, string Email);
-
-#endregion
