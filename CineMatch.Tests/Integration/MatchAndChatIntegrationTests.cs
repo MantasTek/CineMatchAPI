@@ -517,38 +517,3 @@ public class MatchAndChatIntegrationTests : IClassFixture<CineMatchWebApplicatio
 
     #endregion
 }
-
-#region DTOs for Tests
-
-public record AuthResponse(string Token, UserResponse User);
-public record UserResponse(string Id, string Name, string Email);
-public record SendMessageDto(string MatchId, string Text);
-public record UpdatePreferencesDto(List<string> Genres, string MovieLength);
-public record UserDto(
-    string Id,
-    string Name,
-    string Email,
-    string? Location,
-    string? Bio,
-    string? AvatarUrl,
-    List<string> Preferences,
-    string? MovieLength
-);
-public record MatchDto(
-    string Id,
-    UserDto OtherUser,
-    MovieDto Movie,
-    DateTime MatchedAt
-);
-public record MovieDto(
-    string Id,
-    string Title,
-    string Genre,
-    double Rating,
-    int Year,
-    string ImageUrl,
-    string Description,
-    int Runtime
-);
-
-#endregion
