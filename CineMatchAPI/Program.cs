@@ -12,8 +12,16 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
-builder.Services.AddDbContext<CineMatchDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddDbContext<CineMatchDbContext>(options =>
+        options.UseInMemoryDatabase("CineMatch_TestDb"));
+}
+else
+{
+    builder.Services.AddDbContext<CineMatchDbContext>(options =>
+        options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+}
 
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();

@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -14,68 +13,19 @@ using Xunit;
 
 namespace CineMatch.Tests.Integration;
 
-/// <summary>
-/// Custom WebApplicationFactory to configure in-memory database for testing.
-/// 
-/// WHAT WAS FIXED:
-/// The previous implementation was trying to register both SQLite (from Program.cs) 
-/// and InMemory database (for testing) at the same time, which Entity Framework doesn't allow.
-/// 
-/// Think of it like trying to have your car's GPS follow two different maps simultaneously—
-/// it gets confused and doesn't work. The fix involves properly removing the SQLite 
-/// registration before adding the InMemory database.
-/// 
-/// KEY CHANGES:
-/// 1. Use RemoveAll() to remove ALL DbContext-related registrations (not just DbContextOptions)
-/// 2. Use ConfigureTestServices() instead of ConfigureServices() for database initialization
-/// 3. This ensures proper order: first remove old provider, then add new one, then initialize
-/// </summary>
 public class CineMatchWebApplicationFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Run the app in a special Testing environment so Program.cs uses InMemory DB
+        builder.UseEnvironment("Testing");
+
         builder.ConfigureServices(services =>
         {
-            // CRITICAL FIX: Remove ALL existing DbContext registrations
-            // This includes DbContext<T>, DbContextOptions<T>, and related services
-            // We need to remove these BEFORE adding our InMemory database
-            var descriptorType = typeof(DbContextOptions<CineMatchDbContext>);
-            var descriptor = services.SingleOrDefault(d => d.ServiceType == descriptorType);
-            
-            if (descriptor != null)
-            {
-                services.Remove(descriptor);
-            }
-
-            // Also remove the DbContext itself if it's registered
-            var contextDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(CineMatchDbContext));
-            if (contextDescriptor != null)
-            {
-                services.Remove(contextDescriptor);
-            }
-
-            // Now add our InMemory database for testing
-            // Each test run gets a unique database name to ensure isolation
-            services.AddDbContext<CineMatchDbContext>(options =>
-            {
-                options.UseInMemoryDatabase("TestDatabase_" + Guid.NewGuid());
-            });
-        });
-
-        // USE ConfigureTestServices for database initialization
-        // This runs AFTER all services are configured, ensuring no conflicts
-        builder.ConfigureTestServices(services =>
-        {
-            // Build the service provider to get our configured DbContext
+            // Ensure database is created for tests
             var sp = services.BuildServiceProvider();
-
-            // Create a scope to obtain a reference to the database context
             using var scope = sp.CreateScope();
-            var scopedServices = scope.ServiceProvider;
-            var db = scopedServices.GetRequiredService<CineMatchDbContext>();
-
-            // Ensure the database is created
-            // For InMemory database, this just sets up the schema
+            var db = scope.ServiceProvider.GetRequiredService<CineMatchDbContext>();
             db.Database.EnsureCreated();
         });
     }
@@ -102,7 +52,7 @@ public class ApiIntegrationTests : IClassFixture<CineMatchWebApplicationFactory>
     private async Task<string> RegisterAndLoginUser(string email = null!)
     {
         email ??= $"test{Guid.NewGuid()}@test.com";
-        
+
         var registerDto = new RegisterDto(
             "Test User",
             email,
@@ -111,7 +61,7 @@ public class ApiIntegrationTests : IClassFixture<CineMatchWebApplicationFactory>
         );
 
         var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", registerDto);
-        
+
         if (!registerResponse.IsSuccessStatusCode)
         {
             var error = await registerResponse.Content.ReadAsStringAsync();
@@ -156,7 +106,7 @@ public class ApiIntegrationTests : IClassFixture<CineMatchWebApplicationFactory>
         // Arrange
         var email = $"duplicate{Guid.NewGuid()}@example.com";
         var dto1 = new RegisterDto("User1", email, "Pass123!", "City");
-        
+
         await _client.PostAsJsonAsync("/api/auth/register", dto1);
 
         // Act

@@ -82,8 +82,12 @@ public class SwipeRepository : ISwipeRepository
         await _context.SaveChangesAsync();
     }
 
-    public Task<IEnumerable<object>> GetUserLikesAsync(string userId)
+    public async Task<IEnumerable<object>> GetUserLikesAsync(string userId)
     {
-        throw new NotImplementedException();
+        // Return liked swipes as objects (to match current interface)
+        var likes = await _context.Swipes
+            .Where(s => s.UserId == userId && s.Liked)
+            .ToListAsync();
+        return likes.Cast<object>();
     }
 }

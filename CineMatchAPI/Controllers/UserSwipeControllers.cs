@@ -28,6 +28,14 @@ public class UserController : ControllerBase
         return Ok(user);
     }
 
+    [HttpGet("preferences")]
+    public async Task<IActionResult> GetPreferences()
+    {
+        var user = await _userService.GetUserAsync(GetUserId());
+        if (user == null) return NotFound();
+        return Ok(new { genres = user.Preferences, movieLength = user.MovieLength });
+    }
+
     [HttpPut("preferences")]
     public async Task<IActionResult> UpdatePreferences([FromBody] UpdatePreferencesDto dto)
     {
