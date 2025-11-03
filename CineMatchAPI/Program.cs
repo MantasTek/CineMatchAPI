@@ -12,16 +12,8 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Database
-if (builder.Environment.IsEnvironment("Testing"))
-{
-    builder.Services.AddDbContext<CineMatchDbContext>(options =>
-        options.UseInMemoryDatabase("CineMatch_TestDb"));
-}
-else
-{
-    builder.Services.AddDbContext<CineMatchDbContext>(options =>
-        options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
-}
+builder.Services.AddDbContext<CineMatchDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -99,6 +91,26 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// AUTOMATIC MOVIE SEEDING ON STARTUP
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<CineMatchDbContext>();
+    var movieService = services.GetRequiredService<IMovieService>();
+    
+    // Ensure database is created
+    context.Database.EnsureCreated();
+    
+    // Check if movies already exist
+    var hasMovies = await context.Movies.AnyAsync();
+    if (!hasMovies)
+    {
+        Console.WriteLine("Seeding movies from TMDb API...");
+        await movieService.SeedMoviesAsync();
+        Console.WriteLine("Movie seeding complete!");
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
