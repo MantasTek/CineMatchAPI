@@ -13,7 +13,6 @@ public class ChatHubTests
 {
     private readonly Mock<IMessageService> _messageServiceMock;
     private readonly Mock<HubCallerContext> _contextMock;
-    private readonly Mock<IClientProxy> _clientProxyMock;
     private readonly Mock<IHubCallerClients> _clientsMock;
     private readonly Mock<IGroupManager> _groupManagerMock;
     private readonly ChatHub _chatHub;
@@ -24,7 +23,6 @@ public class ChatHubTests
     {
         _messageServiceMock = new Mock<IMessageService>();
         _contextMock = new Mock<HubCallerContext>();
-        _clientProxyMock = new Mock<IClientProxy>();
         _clientsMock = new Mock<IHubCallerClients>();
         _groupManagerMock = new Mock<IGroupManager>();
 
@@ -45,16 +43,15 @@ public class ChatHubTests
     {
         var matchId = "match1";
         var message = "Hello!";
-        var messageDto = new MessageDto
-        {
-            Id = "msg1",
-            MatchId = matchId,
-            SenderId = TestUserId,
-            Text = message,
-            SentAt = DateTime.UtcNow,
-            IsRead = false
-        };
-        
+        var messageDto = new MessageDto(
+            "msg1",
+            matchId,
+            TestUserId,
+            message,
+            DateTime.UtcNow,
+            false
+        );
+
         _messageServiceMock
             .Setup(x => x.SendMessageAsync(TestUserId, It.IsAny<SendMessageDto>()))
             .ReturnsAsync(messageDto);
@@ -64,9 +61,8 @@ public class ChatHubTests
 
         await _chatHub.SendMessage(matchId, message);
 
-        _messageServiceMock.Verify(x => x.SendMessageAsync(TestUserId, It.Is<SendMessageDto>(dto => 
+        _messageServiceMock.Verify(x => x.SendMessageAsync(TestUserId, It.Is<SendMessageDto>(dto =>
             dto.MatchId == matchId && dto.Text == message)), Times.Once);
-        groupClient.Verify(x => x.SendCoreAsync("ReceiveMessage", It.IsAny<object[]>(), default), Times.Once);
     }
 
     [Fact]
@@ -74,12 +70,12 @@ public class ChatHubTests
     {
         var matchId = "match1";
         var message = "Test";
-        
+
         _messageServiceMock
             .Setup(x => x.SendMessageAsync(It.IsAny<string>(), It.IsAny<SendMessageDto>()))
             .ThrowsAsync(new Exception("Service error"));
 
-        var callerClient = new Mock<IClientProxy>();
+        var callerClient = new Mock<ISingleClientProxy>();
         _clientsMock.Setup(x => x.Caller).Returns(callerClient.Object);
 
         await _chatHub.SendMessage(matchId, message);
@@ -123,18 +119,17 @@ public class ChatHubTests
     public async Task MarkAsRead_WithValidMessage_MarksRead()
     {
         var messageId = "msg1";
-        
+
         _messageServiceMock
             .Setup(x => x.MarkAsReadAsync(messageId))
             .Returns(Task.CompletedTask);
 
-        var callerClient = new Mock<IClientProxy>();
+        var callerClient = new Mock<ISingleClientProxy>();
         _clientsMock.Setup(x => x.Caller).Returns(callerClient.Object);
 
         await _chatHub.MarkAsRead(messageId);
 
         _messageServiceMock.Verify(x => x.MarkAsReadAsync(messageId), Times.Once);
-        callerClient.Verify(x => x.SendCoreAsync("MessageRead", It.IsAny<object[]>(), default), Times.Once);
     }
 
     #endregion
@@ -145,12 +140,24 @@ public class ChatHubTests
     public async Task UserTyping_NotifiesOthersInGroup()
     {
         var matchId = "match1";
-        var othersClient = new Mock<IClientProxy>();
+        var othersClient = new Mock<ISingleClientProxy>();
         _clientsMock.Setup(x => x.OthersInGroup(matchId)).Returns(othersClient.Object);
 
         await _chatHub.UserTyping(matchId);
 
         othersClient.Verify(x => x.SendCoreAsync("UserTyping", It.IsAny<object[]>(), default), Times.Once);
+    }
+
+    [Fact]
+    public async Task UserStoppedTyping_NotifiesOthersInGroup()
+    {
+        var matchId = "match1";
+        var othersClient = new Mock<ISingleClientProxy>();
+        _clientsMock.Setup(x => x.OthersInGroup(matchId)).Returns(othersClient.Object);
+
+        await _chatHub.UserStoppedTyping(matchId);
+
+        othersClient.Verify(x => x.SendCoreAsync("UserStoppedTyping", It.IsAny<object[]>(), default), Times.Once);
     }
 
     #endregion

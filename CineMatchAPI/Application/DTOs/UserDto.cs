@@ -7,6 +7,6 @@ public record UserDto(
     string Location,
     string? Bio,
     string? AvatarUrl,
-    List<string> Preferences,
+    List<string>? Preferences, // Nullable - null means onboarding not completed
     string? MovieLength
 );

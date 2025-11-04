@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CineMatchAPI.Migrations
 {
     [DbContext(typeof(CineMatchDbContext))]
-    [Migration("20251022180839_InitialCreate")]
+    [Migration("20251104175312_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -150,6 +150,9 @@ namespace CineMatchAPI.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("MovieId1")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("SwipedAt")
                         .HasColumnType("TEXT");
 
@@ -160,6 +163,8 @@ namespace CineMatchAPI.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("MovieId");
+
+                    b.HasIndex("MovieId1");
 
                     b.HasIndex("UserId");
 
@@ -209,10 +214,7 @@ namespace CineMatchAPI.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Preferences")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue("[]");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
@@ -274,10 +276,14 @@ namespace CineMatchAPI.Migrations
             modelBuilder.Entity("CineMatchAPI.Domain.Entities.Swipe", b =>
                 {
                     b.HasOne("CineMatchAPI.Domain.Entities.Movie", "Movie")
-                        .WithMany("Swipes")
+                        .WithMany()
                         .HasForeignKey("MovieId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("CineMatchAPI.Domain.Entities.Movie", null)
+                        .WithMany("Swipes")
+                        .HasForeignKey("MovieId1");
 
                     b.HasOne("CineMatchAPI.Domain.Entities.User", "User")
                         .WithMany("Swipes")

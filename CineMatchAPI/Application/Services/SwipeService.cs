@@ -32,6 +32,21 @@ public class SwipeService : ISwipeService
 
     public async Task<SwipeResultDto> SwipeMovieAsync(string userId, SwipeDto dto)
     {
+        // Validate that the user exists
+        var userExists = await _userRepository.ExistsAsync(userId);
+        if (!userExists)
+        {
+            return new SwipeResultDto(false, false, null);
+        }
+
+        // Validate that the movie exists
+        var movieExists = await _movieRepository.ExistsAsync(dto.MovieId);
+        if (!movieExists)
+        {
+            return new SwipeResultDto(false, false, null);
+        }
+
+        // Check if user already swiped on this movie
         var existing = await _swipeRepository.GetUserSwipeForMovieAsync(userId, dto.MovieId);
         if (existing != null)
         {

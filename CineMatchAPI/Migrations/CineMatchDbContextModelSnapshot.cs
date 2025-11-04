@@ -206,10 +206,7 @@ namespace CineMatchAPI.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Preferences")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValue("[]");
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");

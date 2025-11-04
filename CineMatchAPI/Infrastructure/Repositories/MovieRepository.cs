@@ -21,21 +21,21 @@ public class MovieRepository : IMovieRepository
 
     public async Task<IEnumerable<Movie>> GetByGenreAsync(string genre, int page, int pageSize)
     {
+        if (string.IsNullOrWhiteSpace(genre) || page <= 0 || pageSize <= 0)
+        {
+            return Enumerable.Empty<Movie>();
+        }
+
         var skip = (page - 1) * pageSize;
+        var genreNormalized = genre.ToLowerInvariant();
 
-        // Get ALL movies for this genre
-        var allMovies = await _context.Movies
-            .Where(m => m.Genre == genre)
-            .ToListAsync();
-
-        // Shuffle in-memory
-        var random = new Random();
-        var shuffled = allMovies.OrderBy(x => random.Next()).ToList();
-
-        return shuffled
+        return await _context.Movies
+            .Where(m => m.Genre.ToLower() == genreNormalized)
+            .OrderByDescending(m => m.Rating)
+            .ThenBy(m => m.Id)
             .Skip(skip)
             .Take(pageSize)
-            .ToList();
+            .ToListAsync();
     }
 
     public async Task<IEnumerable<Movie>> GetByGenreExcludingSwipedAsync(
@@ -44,27 +44,26 @@ public class MovieRepository : IMovieRepository
         int page, 
         int pageSize)
     {
-        var skip = (page - 1) * pageSize;
+        if (string.IsNullOrWhiteSpace(genre) || page <= 0 || pageSize <= 0)
+        {
+            return Enumerable.Empty<Movie>();
+        }
 
-        // Get movies the user has already swiped
+        var skip = (page - 1) * pageSize;
+        var genreNormalized = genre.ToLowerInvariant();
+
         var swipedMovieIds = await _context.Swipes
             .Where(s => s.UserId == userId)
             .Select(s => s.MovieId)
             .ToListAsync();
 
-        // Get unswipped movies
-        var allMovies = await _context.Movies
-            .Where(m => m.Genre == genre && !swipedMovieIds.Contains(m.Id))
-            .ToListAsync();
-
-        // Shuffle
-        var random = new Random();
-        var shuffled = allMovies.OrderBy(x => random.Next()).ToList();
-
-        return shuffled
+        return await _context.Movies
+            .Where(m => m.Genre.ToLower() == genreNormalized && !swipedMovieIds.Contains(m.Id))
+            .OrderByDescending(m => m.Rating)
+            .ThenBy(m => m.Id)
             .Skip(skip)
             .Take(pageSize)
-            .ToList();
+            .ToListAsync();
     }
 
     public async Task<Movie> CreateAsync(Movie movie)

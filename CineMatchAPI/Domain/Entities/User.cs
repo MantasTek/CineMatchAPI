@@ -1,6 +1,4 @@
-﻿using System.Text.RegularExpressions;
-
-namespace CineMatchAPI.Domain.Entities;
+﻿namespace CineMatchAPI.Domain.Entities;
 
 /// <summary>
 /// Represents a user in the CineMatch application.
@@ -26,8 +24,10 @@ public class User
     public string? AvatarUrl { get; set; }
     
     // Movie preferences - stored as JSON string
-    // Example: "[\"Action\", \"Comedy\", \"Drama\"]"
-    public string Preferences { get; set; } = "[]";
+    // null = onboarding not completed
+    // "[]" = no preferences selected
+    // "[\"Action\", \"Comedy\"]" = preferences selected
+    public string? Preferences { get; set; }
     
     // Preferred movie length: "short", "medium", or "long"
     public string? MovieLength { get; set; }
@@ -37,7 +37,6 @@ public class User
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     
     // Navigation properties for Entity Framework relationships
-    // These will be populated when we query with Include()
     public ICollection<Swipe> Swipes { get; set; } = new List<Swipe>();
     public ICollection<Match> MatchesAsUser1 { get; set; } = new List<Match>();
     public ICollection<Match> MatchesAsUser2 { get; set; } = new List<Match>();

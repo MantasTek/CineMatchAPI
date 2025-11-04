@@ -33,7 +33,20 @@ public class UserService : IUserService
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null) return null;
 
-        var preferences = JsonSerializer.Deserialize<List<string>>(user.Preferences) ?? new List<string>();
+        // Handle nullable preferences
+        List<string>? preferences = null;
+        if (!string.IsNullOrEmpty(user.Preferences))
+        {
+            try
+            {
+                preferences = JsonSerializer.Deserialize<List<string>>(user.Preferences);
+            }
+            catch (JsonException)
+            {
+                preferences = null;
+            }
+        }
+
         return new UserDto(
             user.Id,
             user.Name,
@@ -68,8 +81,8 @@ public class UserService : IUserService
         await _swipeRepository.DeleteAllByUserIdAsync(userId);
         await _matchRepository.DeleteAllByUserIdAsync(userId);
 
-        // Reset preferences
-        user.Preferences = "[]";
+        // Reset to onboarding state (null preferences)
+        user.Preferences = null;
         user.MovieLength = null;
         user.UpdatedAt = DateTime.UtcNow;
 

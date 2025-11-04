@@ -14,6 +14,7 @@ namespace CineMatch.Tests.Controllers;
 public class MovieControllerTests
 {
     private readonly Mock<IMovieService> _movieServiceMock;
+    private readonly Mock<IUserService> _userServiceMock;
     private readonly Mock<ILogger<MovieController>> _loggerMock;
     private readonly MovieController _controller;
     private const string TestUserId = "user123";
@@ -21,8 +22,9 @@ public class MovieControllerTests
     public MovieControllerTests()
     {
         _movieServiceMock = new Mock<IMovieService>();
+        _userServiceMock = new Mock<IUserService>();
         _loggerMock = new Mock<ILogger<MovieController>>();
-        _controller = new MovieController(_movieServiceMock.Object, _loggerMock.Object);
+        _controller = new MovieController(_movieServiceMock.Object, _userServiceMock.Object, _loggerMock.Object);
         SetupUserClaims(TestUserId);
     }
 
@@ -35,15 +37,15 @@ public class MovieControllerTests
         var length = "medium";
         var movies = new List<MovieDto>
         {
-            CreateMovieDto("1", "Movie 1", genre),
-            CreateMovieDto("2", "Movie 2", genre)
+            CreateMovieDto("1", "Movie1", genre),
+            CreateMovieDto("2", "Movie2", genre)
         };
         
         _movieServiceMock
-            .Setup(x => x.GetMoviesByPreferencesAsync(TestUserId, genre, length, 1, 20))
+            .Setup(x => x.GetMoviesByPreferencesAsync(TestUserId, genre, length,1,20))
             .ReturnsAsync(movies);
 
-        var result = await _controller.GetMovies(genre, length, 1);
+        var result = await _controller.GetMovies(genre, length,1);
 
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         okResult.StatusCode.Should().Be(200);
@@ -52,7 +54,11 @@ public class MovieControllerTests
     [Fact]
     public async Task GetMovies_WithMissingGenre_ReturnsBadRequest()
     {
-        var result = await _controller.GetMovies("", "medium", 1);
+        _userServiceMock
+            .Setup(x => x.GetUserAsync(TestUserId))
+            .ReturnsAsync(new UserDto(TestUserId, "Name", "email@test.com", "City", null, null, null, null));
+
+        var result = await _controller.GetMovies("", "medium",1);
 
         result.Should().BeOfType<BadRequestObjectResult>();
     }
@@ -60,7 +66,11 @@ public class MovieControllerTests
     [Fact]
     public async Task GetMovies_WithMissingLength_ReturnsBadRequest()
     {
-        var result = await _controller.GetMovies("Action", "", 1);
+        _userServiceMock
+            .Setup(x => x.GetUserAsync(TestUserId))
+            .ReturnsAsync(new UserDto(TestUserId, "Name", "email@test.com", "City", null, null, new List<string>{"Action"}, null));
+
+        var result = await _controller.GetMovies("Action", "",1);
 
         result.Should().BeOfType<BadRequestObjectResult>();
     }
@@ -68,7 +78,11 @@ public class MovieControllerTests
     [Fact]
     public async Task GetMovies_WithNullGenre_ReturnsBadRequest()
     {
-        var result = await _controller.GetMovies(null!, "medium", 1);
+        _userServiceMock
+            .Setup(x => x.GetUserAsync(TestUserId))
+            .ReturnsAsync(new UserDto(TestUserId, "Name", "email@test.com", "City", null, null, null, null));
+
+        var result = await _controller.GetMovies(null!, "medium",1);
 
         result.Should().BeOfType<BadRequestObjectResult>();
     }
@@ -80,7 +94,7 @@ public class MovieControllerTests
             .Setup(x => x.GetMoviesByPreferencesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()))
             .ThrowsAsync(new Exception("Test exception"));
 
-        var result = await _controller.GetMovies("Action", "medium", 1);
+        var result = await _controller.GetMovies("Action", "medium",1);
 
         var statusCodeResult = result.Should().BeOfType<ObjectResult>().Subject;
         statusCodeResult.StatusCode.Should().Be(500);
@@ -95,9 +109,9 @@ public class MovieControllerTests
             .Setup(x => x.GetMoviesByPreferencesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()))
             .ReturnsAsync(new List<MovieDto>());
 
-        await _controller.GetMovies(genre, length, 1);
+        await _controller.GetMovies(genre, length,1);
 
-        _movieServiceMock.Verify(x => x.GetMoviesByPreferencesAsync(TestUserId, genre, length, 1, 20), Times.Once);
+        _movieServiceMock.Verify(x => x.GetMoviesByPreferencesAsync(TestUserId, genre, length,1,20), Times.Once);
     }
 
     [Fact]
@@ -105,14 +119,14 @@ public class MovieControllerTests
     {
         var genre = "Drama";
         var length = "long";
-        var page = 3;
+        var page =3;
         _movieServiceMock
             .Setup(x => x.GetMoviesByPreferencesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()))
             .ReturnsAsync(new List<MovieDto>());
 
         await _controller.GetMovies(genre, length, page);
 
-        _movieServiceMock.Verify(x => x.GetMoviesByPreferencesAsync(TestUserId, genre, length, page, 20), Times.Once);
+        _movieServiceMock.Verify(x => x.GetMoviesByPreferencesAsync(TestUserId, genre, length, page,20), Times.Once);
     }
 
     #endregion

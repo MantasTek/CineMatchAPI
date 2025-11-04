@@ -41,7 +41,7 @@ namespace CineMatchAPI.Migrations
                     Location = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
                     Bio = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
                     AvatarUrl = table.Column<string>(type: "TEXT", nullable: true),
-                    Preferences = table.Column<string>(type: "TEXT", nullable: false, defaultValue: "[]"),
+                    Preferences = table.Column<string>(type: "TEXT", nullable: true),
                     MovieLength = table.Column<string>(type: "TEXT", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
@@ -92,7 +92,8 @@ namespace CineMatchAPI.Migrations
                     UserId = table.Column<string>(type: "TEXT", nullable: false),
                     MovieId = table.Column<string>(type: "TEXT", nullable: false),
                     Liked = table.Column<bool>(type: "INTEGER", nullable: false),
-                    SwipedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    SwipedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    MovieId1 = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -103,6 +104,11 @@ namespace CineMatchAPI.Migrations
                         principalTable: "Movies",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Swipes_Movies_MovieId1",
+                        column: x => x.MovieId1,
+                        principalTable: "Movies",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Swipes_Users_UserId",
                         column: x => x.UserId,
@@ -190,6 +196,11 @@ namespace CineMatchAPI.Migrations
                 name: "IX_Swipes_MovieId",
                 table: "Swipes",
                 column: "MovieId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Swipes_MovieId1",
+                table: "Swipes",
+                column: "MovieId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Swipes_UserId",

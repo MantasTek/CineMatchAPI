@@ -28,17 +28,15 @@ public class MovieService : IMovieService
         int page = 1, 
         int pageSize = 20)
     {
-        // Get movies excluding already swiped ones
         var movies = await _movieRepository.GetByGenreExcludingSwipedAsync(genre, userId, page, pageSize);
         
-        // If we have fewer than 5 movies left, fetch more from TMDb
-        if (movies.Count() < 5)
+        // INCREASED threshold from 5 to 20 and pages from 3 to 5
+        if (movies.Count() < 20)
         {
-            await _tmdbService.FetchAndCacheMoviesByGenreAsync(genre, pagesToFetch: 3);
+            await _tmdbService.FetchAndCacheMoviesByGenreAsync(genre, pagesToFetch: 5);
             movies = await _movieRepository.GetByGenreExcludingSwipedAsync(genre, userId, page, pageSize);
         }
         
-        // Filter by runtime
         var filtered = FilterByLength(movies, movieLength);
         
         return filtered.Select(m => new MovieDto(
