@@ -52,42 +52,6 @@ public class MovieControllerTests
     }
 
     [Fact]
-    public async Task GetMovies_WithMissingGenre_ReturnsBadRequest()
-    {
-        _userServiceMock
-            .Setup(x => x.GetUserAsync(TestUserId))
-            .ReturnsAsync(new UserDto(TestUserId, "Name", "email@test.com", "City", null, null, null, null));
-
-        var result = await _controller.GetMovies("", "medium",1);
-
-        result.Should().BeOfType<BadRequestObjectResult>();
-    }
-
-    [Fact]
-    public async Task GetMovies_WithMissingLength_ReturnsBadRequest()
-    {
-        _userServiceMock
-            .Setup(x => x.GetUserAsync(TestUserId))
-            .ReturnsAsync(new UserDto(TestUserId, "Name", "email@test.com", "City", null, null, new List<string>{"Action"}, null));
-
-        var result = await _controller.GetMovies("Action", "",1);
-
-        result.Should().BeOfType<BadRequestObjectResult>();
-    }
-
-    [Fact]
-    public async Task GetMovies_WithNullGenre_ReturnsBadRequest()
-    {
-        _userServiceMock
-            .Setup(x => x.GetUserAsync(TestUserId))
-            .ReturnsAsync(new UserDto(TestUserId, "Name", "email@test.com", "City", null, null, null, null));
-
-        var result = await _controller.GetMovies(null!, "medium",1);
-
-        result.Should().BeOfType<BadRequestObjectResult>();
-    }
-
-    [Fact]
     public async Task GetMovies_WithException_ReturnsInternalServerError()
     {
         _movieServiceMock

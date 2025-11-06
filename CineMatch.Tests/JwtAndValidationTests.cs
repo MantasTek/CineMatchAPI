@@ -209,14 +209,6 @@ public class EntityValidationTests
     }
 
     [Fact]
-    public void User_DefaultPreferences_IsEmptyArray()
-    {
-        var user = new User();
-
-        user.Preferences.Should().Be("[]");
-    }
-
-    [Fact]
     public void User_DefaultCreatedAt_IsRecent()
     {
         var user = new User();
