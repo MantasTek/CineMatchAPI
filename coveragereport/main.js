@@ -217,17 +217,17 @@ var assemblies = [
       { "name": "CineMatchAPI.Application.DTOs.LoginDto", "rp": "CineMatchAPI_LoginDto.html", "cl": 4, "ucl": 0, "cal": 4, "tl": 6, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.DTOs.MatchDto", "rp": "CineMatchAPI_MatchDto.html", "cl": 2, "ucl": 4, "cal": 6, "tl": 8, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.DTOs.MessageDto", "rp": "CineMatchAPI_MessageDto.html", "cl": 5, "ucl": 3, "cal": 8, "tl": 10, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "CineMatchAPI.Application.DTOs.MovieDto", "rp": "CineMatchAPI_MovieDto.html", "cl": 5, "ucl": 5, "cal": 10, "tl": 12, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "CineMatchAPI.Application.DTOs.MovieDto", "rp": "CineMatchAPI_MovieDto.html", "cl": 6, "ucl": 4, "cal": 10, "tl": 12, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.DTOs.RegisterDto", "rp": "CineMatchAPI_RegisterDto.html", "cl": 6, "ucl": 0, "cal": 6, "tl": 8, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.DTOs.SendMessageDto", "rp": "CineMatchAPI_SendMessageDto.html", "cl": 4, "ucl": 0, "cal": 4, "tl": 6, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.DTOs.SwipeDto", "rp": "CineMatchAPI_SwipeDto.html", "cl": 1, "ucl": 0, "cal": 1, "tl": 3, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.DTOs.UpdatePreferencesDto", "rp": "CineMatchAPI_UpdatePreferencesDto.html", "cl": 4, "ucl": 0, "cal": 4, "tl": 6, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.DTOs.UserDto", "rp": "CineMatchAPI_UserDto.html", "cl": 10, "ucl": 0, "cal": 10, "tl": 12, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.Services.AuthService", "rp": "CineMatchAPI_AuthService.html", "cl": 63, "ucl": 4, "cal": 67, "tl": 112, "cb": 10, "tb": 10, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "CineMatchAPI.Application.Services.JwtTokenService", "rp": "CineMatchAPI_JwtTokenService.html", "cl": 27, "ucl": 20, "cal": 47, "tl": 77, "cb": 1, "tb": 4, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "CineMatchAPI.Application.Services.JwtTokenService", "rp": "CineMatchAPI_JwtTokenService.html", "cl": 47, "ucl": 0, "cal": 47, "tl": 77, "cb": 2, "tb": 4, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.Services.MatchService", "rp": "CineMatchAPI_MatchService.html", "cl": 62, "ucl": 37, "cal": 99, "tl": 141, "cb": 11, "tb": 20, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.Services.MessageService", "rp": "CineMatchAPI_MessageService.html", "cl": 52, "ucl": 0, "cal": 52, "tl": 85, "cb": 8, "tb": 8, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "CineMatchAPI.Application.Services.MovieService", "rp": "CineMatchAPI_MovieService.html", "cl": 5, "ucl": 21, "cal": 26, "tl": 71, "cb": 0, "tb": 10, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "CineMatchAPI.Application.Services.MovieService", "rp": "CineMatchAPI_MovieService.html", "cl": 23, "ucl": 3, "cal": 26, "tl": 71, "cb": 10, "tb": 10, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.Services.PasswordService", "rp": "CineMatchAPI_PasswordService.html", "cl": 10, "ucl": 3, "cal": 13, "tl": 81, "cb": 4, "tb": 4, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.Services.SwipeResultDto", "rp": "CineMatchAPI_SwipeResultDto.html", "cl": 1, "ucl": 0, "cal": 1, "tl": 136, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Application.Services.SwipeService", "rp": "CineMatchAPI_SwipeService.html", "cl": 81, "ucl": 0, "cal": 81, "tl": 136, "cb": 17, "tb": 18, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
@@ -253,7 +253,7 @@ var assemblies = [
       { "name": "CineMatchAPI.Infrastructure.Repositories.MovieRepository", "rp": "CineMatchAPI_MovieRepository.html", "cl": 50, "ucl": 2, "cal": 52, "tl": 87, "cb": 9, "tb": 12, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Infrastructure.Repositories.SwipeRepository", "rp": "CineMatchAPI_SwipeRepository.html", "cl": 59, "ucl": 0, "cal": 59, "tl": 93, "cb": 2, "tb": 2, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Infrastructure.Repositories.UserRepository", "rp": "CineMatchAPI_UserRepository.html", "cl": 39, "ucl": 0, "cal": 39, "tl": 97, "cb": 2, "tb": 2, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "CineMatchAPI.Infrastructure.Services.NullableDateTimeConverter", "rp": "CineMatchAPI_NullableDateTimeConverter.html", "cl": 0, "ucl": 25, "cal": 25, "tl": 381, "cb": 0, "tb": 10, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "CineMatchAPI.Infrastructure.Services.NullableDateTimeConverter", "rp": "CineMatchAPI_NullableDateTimeConverter.html", "cl": 24, "ucl": 1, "cal": 25, "tl": 381, "cb": 9, "tb": 10, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Infrastructure.Services.TMDbMovie", "rp": "CineMatchAPI_TMDbMovie.html", "cl": 0, "ucl": 6, "cal": 6, "tl": 381, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Infrastructure.Services.TMDbMovieDetails", "rp": "CineMatchAPI_TMDbMovieDetails.html", "cl": 0, "ucl": 1, "cal": 1, "tl": 381, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "CineMatchAPI.Infrastructure.Services.TMDbResponse", "rp": "CineMatchAPI_TMDbResponse.html", "cl": 0, "ucl": 1, "cal": 1, "tl": 381, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
@@ -298,18 +298,6 @@ var riskHotspots = [
     "metrics": [
       { "value": 110, "exceeded": true },
       { "value": 10, "exceeded": false },
-    ]},
-  {
-    "assembly": "CineMatchAPI", "class": "CineMatchAPI.Application.Services.MovieService", "reportPath": "CineMatchAPI_MovieService.html", "methodName": "FilterByLength(System.Collections.Generic.IEnumerable`1<CineMatchAPI.Domain.Entities.Movie>,System.String)", "methodShortName": "FilterByLength(...)", "fileIndex": 0, "line": 62,
-    "metrics": [
-      { "value": 72, "exceeded": true },
-      { "value": 8, "exceeded": false },
-    ]},
-  {
-    "assembly": "CineMatchAPI", "class": "CineMatchAPI.Infrastructure.Services.NullableDateTimeConverter", "reportPath": "CineMatchAPI_NullableDateTimeConverter.html", "methodName": "Read(System.Text.Json.Utf8JsonReader&,System.Type,System.Text.Json.JsonSerializerOptions)", "methodShortName": "Read(...)", "fileIndex": 0, "line": 344,
-    "metrics": [
-      { "value": 72, "exceeded": true },
-      { "value": 8, "exceeded": false },
     ]},
   {
     "assembly": "CineMatchAPI", "class": "CineMatchAPI.Controllers.MovieController", "reportPath": "CineMatchAPI_MovieController.html", "methodName": "GetMovies()", "methodShortName": "GetMovies()", "fileIndex": 0, "line": 74,
